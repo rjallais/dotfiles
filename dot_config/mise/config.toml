@@ -1,0 +1,48 @@
+[tools]
+"aqua:Wilfred/difftastic" = "latest"
+"aqua:charmbracelet/crush" = "latest"
+"aqua:exercism/cli" = "latest"
+"aqua:iawia002/lux" = "latest"
+"aqua:microsoft/edit" = "1.2.0"
+"aqua:nats-io/natscli" = "latest"
+"aqua:sst/opencode" = "latest"
+"aqua:tealdeer-rs/tealdeer" = "latest"
+"aqua:topgrade-rs/topgrade" = "latest"
+"aqua:twistedpair/google-cloud-sdk" = "latest"
+"aqua:zyedidia/micro" = "latest"
+bat = "latest"
+bottom = "latest"
+bun = "latest"
+chezmoi = "latest"
+cmake = "latest"
+conan = "latest"
+dust = "latest"
+fastfetch = "latest"
+fd = "latest"
+fzf = "latest"
+github-cli = "latest"
+go = "latest"
+hyperfine = "latest"
+lsd = "latest"
+node = "latest"
+"npm:@github/copilot" = "latest"
+"npm:@google/gemini-cli" = "latest"
+ripgrep = "latest"
+sd = "latest"
+sqlite = "latest"
+starship = "latest"
+"ubi:danielmiessler/fabric" = "latest"
+"ubi:xmake-io/xmake" = "latest"
+usage = "latest"
+uv = "latest"
+yt-dlp = "latest"
+
+[settings]
+experimental = true
+idiomatic_version_file_enable_tools = []
+
+[settings.npm]
+bun = true
+
+[settings.python]
+compile = false

@@ -100,7 +100,7 @@ else
     # Try to run Chezmoi via Mise so there's no global installer curl
     if command -v mise &> /dev/null; then
         log_info "Running Chezmoi via Mise (no global install)..."
-        if mise run chezmoi init --apply "$REPO_URL"; then
+        if mise exec chezmoi -- init --apply "$REPO_URL"; then
             log_info "Chezmoi ran via Mise successfully"
         else
             log_warn "Mise failed to run Chezmoi; falling back to official installer"
@@ -118,10 +118,11 @@ fi
 
 # If chezmoi directory exists, ensure we are in it for mise installs
 if [ -d "$HOME/.local/share/chezmoi" ]; then
-    log_info "Installing tools defined in .mise.toml via Mise..."
+    log_info "Installing tools defined in dot_config/mise/config.toml via Mise..."
     cd "$HOME/.local/share/chezmoi"
     if command -v mise &> /dev/null; then
-        mise install || log_warn "Mise install reported failures"
+        # Use the repository's Mise config under dot_config/mise/config.toml
+        mise install --config="dot_config/mise/config.toml" || log_warn "Mise install reported failures"
     fi
 fi
 

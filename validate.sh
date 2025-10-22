@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Quick validation script to check the dotfiles structure
+# Updated to be fish-centric and validate mise usage
 
 set -e
 
@@ -9,7 +10,6 @@ echo "🔍 Validating dotfiles repository structure..."
 REQUIRED_FILES=(
     ".chezmoi.toml.tmpl"
     ".chezmoiignore"
-    ".mise.toml"
     "install.sh"
     "README.md"
 )
@@ -23,9 +23,21 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-# Check shell scripts syntax
+# Check shell scripts syntax (prefer fish)
 echo ""
 echo "🔍 Checking shell script syntax..."
+# Check fish config syntax if fish is installed
+if command -v fish >/dev/null 2>&1; then
+    if [ -f "$HOME/.config/fish/config.fish" ]; then
+        if fish -n "$HOME/.config/fish/config.fish" 2>/dev/null; then
+            echo "✓ Fish config syntax valid"
+        else
+            echo "✗ Fish config has syntax errors"
+            exit 1
+        fi
+    fi
+fi
+
 for script in install.sh dot_bashrc dot_bash_profile dot_profile; do
     if [ -f "$script" ]; then
         if bash -n "$script" 2>/dev/null; then
@@ -50,7 +62,7 @@ fi
 # Verify Chezmoi file naming
 echo ""
 echo "🔍 Checking Chezmoi file naming conventions..."
-DOT_FILES=$(find . -maxdepth 1 -name "dot_*" -type f)
+DOT_FILES=$(find . -maxdepth 1 -name "dot_*" -type f 2>/dev/null)
 if [ -n "$DOT_FILES" ]; then
     echo "✓ Found $(echo "$DOT_FILES" | wc -l) dotfiles"
     echo "$DOT_FILES" | sed 's/^/  /'
@@ -59,22 +71,37 @@ else
     exit 1
 fi
 
-# Check .mise.toml syntax
+# Check .mise.toml existence and basic syntax
 echo ""
 echo "🔍 Checking .mise.toml format..."
 if [ -f ".mise.toml" ]; then
-    # Basic check - just ensure it's not empty and has [tools] section
     if grep -q "\[tools\]" ".mise.toml"; then
         echo "✓ .mise.toml has [tools] section"
     else
         echo "⚠ .mise.toml missing [tools] section"
     fi
+else
+    echo "⚠ .mise.toml not present; ensure you have tools configured for Mise if needed"
+fi
+
+# Check whether installation path for mise activation was added
+echo ""
+echo "🔍 Verifying mise activation in shell config..."
+if command -v fish >/dev/null 2>&1; then
+    CFG="$HOME/.config/fish/config.fish"
+else
+    CFG="$HOME/.bashrc"
+fi
+
+if [ -f "$CFG" ]; then
+    if grep -q "mise activate" "$CFG" 2>/dev/null; then
+        echo "✓ mise activation present in $CFG"
+    else
+        echo "⚠ mise activation not found in $CFG"
+    fi
+else
+    echo "⚠ Shell config $CFG not found"
 fi
 
 echo ""
-echo "✅ All validation checks passed!"
-echo ""
-echo "Next steps:"
-echo "  1. Test the install script in a clean environment"
-echo "  2. Verify Chezmoi can parse the templates"
-echo "  3. Check that Mise can install the defined tools"
+echo "✅ All validation checks passed (with warnings possible)"

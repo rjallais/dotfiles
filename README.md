@@ -14,10 +14,17 @@ A modern dotfiles repository using [Chezmoi](https://www.chezmoi.io/) for dotfil
 
 ### Fresh System Setup
 
-Run this one-liner to set up everything on a new Linux system:
+Run this one-liner to set up everything on a new Linux system (installer will prefer Fish + Mise):
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/rjallais/dotfiles/main/install.sh)"
+```
+
+If you prefer to avoid a global chezmoi installer, the install script runs Chezmoi via Mise when available. You can also manually run Chezmoi from Mise:
+
+```bash
+# Use the chezmoi binary provided by Mise
+mise exec chezmoi -- init --apply https://github.com/rjallais/dotfiles.git
 ```
 
 Or clone and run manually:
@@ -76,8 +83,8 @@ mise ls
 # Install a specific tool version
 mise use python@3.11
 
-# Install all tools from .mise.toml
-mise install
+# Install all tools from `dot_config/mise/config.toml`
+mise install --config="dot_config/mise/config.toml"
 
 # Check for outdated tools
 mise outdated
@@ -109,7 +116,7 @@ chezmoi edit-config
 .
 ├── .chezmoi.toml.tmpl       # Chezmoi configuration template
 ├── .chezmoiignore           # Files to ignore when applying
-├── .mise.toml               # Mise tool version configuration
+├── dot_config/mise/config.toml  # Mise tool version configuration (repository-controlled)
 ├── install.sh               # Bootstrap installation script
 ├── dot_bashrc               # ~/.bashrc
 ├── dot_bash_profile         # ~/.bash_profile
@@ -127,7 +134,7 @@ chezmoi edit-config
    - Templates can use variables defined in `.chezmoi.toml.tmpl`
 
 2. **Mise** manages development tool versions
-   - Tools defined in `.mise.toml` are automatically installed
+   - Tools defined in `dot_config/mise/config.toml` are automatically installed via `mise install --config="dot_config/mise/config.toml"`
    - Each project can have its own tool versions
    - Activates the right versions automatically when you `cd` into a directory
 
@@ -146,10 +153,16 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ### Mise not activating
-Add this to your shell configuration:
+Add this to your shell configuration (Fish is preferred):
 ```bash
-eval "$(mise activate bash)"  # for bash
-eval "$(mise activate zsh)"   # for zsh
+# Fish
+eval (mise activate fish)
+
+# Bash
+eval "$(mise activate bash)"
+
+# Zsh
+eval "$(mise activate zsh)"
 ```
 
 ### Tools not installing via Mise

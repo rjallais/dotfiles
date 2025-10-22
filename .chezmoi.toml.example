@@ -1,0 +1,18 @@
+# Example Chezmoi data configuration
+# Copy this to ~/.config/chezmoi/chezmoi.toml to customize
+
+[data]
+    email = "your.email@example.com"
+    name = "Your Name"
+
+[edit]
+    command = "vim"
+    # Other options: "code", "nano", "emacs"
+
+[diff]
+    pager = "delta"
+    # Other options: "less", "more", "bat"
+
+# Example: Use different git email for work
+# [data.work]
+#     email = "work.email@company.com"

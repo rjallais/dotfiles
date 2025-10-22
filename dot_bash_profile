@@ -1,0 +1,20 @@
+# ~/.bash_profile - Bash login shell configuration
+
+# Source .bashrc if it exists
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+
+# Add user's private bin to PATH if it exists
+if [ -d "$HOME/.local/bin" ] ; then
+    PATH="$HOME/.local/bin:$PATH"
+fi
+
+if [ -d "$HOME/bin" ] ; then
+    PATH="$HOME/bin:$PATH"
+fi
+
+# Load mise if available
+if command -v mise &> /dev/null; then
+    eval "$(mise activate bash)"
+fi

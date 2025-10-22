@@ -1,0 +1,12 @@
+# Files and directories to ignore when applying dotfiles
+
+README.md
+LICENSE
+CONTRIBUTING.md
+.git/
+.github/
+install.sh
+bootstrap.sh
+validate.sh
+.mise.toml
+*.example

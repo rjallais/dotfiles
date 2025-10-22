@@ -1,0 +1,51 @@
+# ~/.gitconfig - Git configuration
+
+[user]
+{{- if .email }}
+    email = {{ .email }}
+{{- end }}
+{{- if .name }}
+    name = {{ .name }}
+{{- end }}
+
+[core]
+    editor = vim
+    pager = delta
+    autocrlf = input
+
+[init]
+    defaultBranch = main
+
+[pull]
+    rebase = false
+
+[push]
+    default = simple
+    autoSetupRemote = true
+
+[color]
+    ui = auto
+
+[alias]
+    st = status
+    co = checkout
+    br = branch
+    ci = commit
+    unstage = reset HEAD --
+    last = log -1 HEAD
+    visual = log --oneline --graph --decorate --all
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true
+    light = false
+    line-numbers = true
+    side-by-side = true
+
+[merge]
+    conflictstyle = diff3
+
+[diff]
+    colorMoved = default

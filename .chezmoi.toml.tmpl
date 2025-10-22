@@ -1,0 +1,12 @@
+# Chezmoi configuration template
+# This file will be processed as a template when chezmoi is initialized
+
+[data]
+    email = {{ promptStringOnce . "email" "Email address" | quote }}
+    name = {{ promptStringOnce . "name" "Full name" | quote }}
+
+[edit]
+    command = "micro"
+
+[diff]
+    pager = "delta"

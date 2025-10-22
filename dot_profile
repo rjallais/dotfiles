@@ -1,0 +1,22 @@
+# ~/.profile - POSIX shell profile configuration
+
+# Add user's private bin to PATH if it exists
+if [ -d "$HOME/.local/bin" ] ; then
+    PATH="$HOME/.local/bin:$PATH"
+fi
+
+if [ -d "$HOME/bin" ] ; then
+    PATH="$HOME/bin:$PATH"
+fi
+
+# Source .bashrc if running bash
+if [ -n "$BASH_VERSION" ]; then
+    if [ -f "$HOME/.bashrc" ]; then
+        . "$HOME/.bashrc"
+    fi
+fi
+
+# Load mise if available
+if command -v mise > /dev/null 2>&1; then
+    eval "$(mise activate sh)"
+fi

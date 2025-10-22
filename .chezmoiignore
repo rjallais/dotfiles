@@ -1,6 +1,7 @@
 # Files and directories to ignore when applying dotfiles
 
 README.md
+SUMMARY.md
 LICENSE
 CONTRIBUTING.md
 .git/

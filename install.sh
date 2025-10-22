@@ -91,7 +91,28 @@ fi
 
 # Initialize Chezmoi with this repository using Mise to run it (fallback to curl installer)
 REPO_URL="${1:-https://github.com/rjallais/dotfiles.git}"
-log_info "Initializing Chezmoi with repository: $REPO_URL"
+
+# If fish is available, attempt to make it the user's login shell
+if command -v fish >/dev/null 2>&1; then
+    if command -v sudo >/dev/null 2>&1; then
+        log_info "Setting fish as login shell for user $USER"
+        sudo chsh -s "$(command -v fish)" "$USER" || log_warn "Failed to change login shell to fish"
+    else
+        log_warn "sudo not available; cannot change login shell to fish"
+    fi
+fi
+
+# Prefer using the current repository as the Chezmoi source when running from a checkout
+USE_PWD_SOURCE=0
+if [ -d "$PWD/.git" ] || [ -f "$PWD/.chezmoi.toml.tmpl" ] || [ -f ".chezmoi.toml.tmpl" ]; then
+    USE_PWD_SOURCE=1
+fi
+
+if [ "$USE_PWD_SOURCE" -eq 1 ]; then
+    log_info "Initializing Chezmoi from local source: $PWD"
+else
+    log_info "Initializing Chezmoi with repository: $REPO_URL"
+fi
 
 if command -v chezmoi &> /dev/null; then
     log_info "Chezmoi already installed locally; updating..."
@@ -100,19 +121,34 @@ else
     # Try to run Chezmoi via Mise so there's no global installer curl
     if command -v mise &> /dev/null; then
         log_info "Running Chezmoi via Mise (no global install)..."
-        if mise exec chezmoi -- init --apply "$REPO_URL"; then
-            log_info "Chezmoi ran via Mise successfully"
+        if [ "$USE_PWD_SOURCE" -eq 1 ]; then
+            if mise exec chezmoi -- init --apply --source "$PWD"; then
+                log_info "Chezmoi ran via Mise successfully from local source"
+            else
+                log_warn "Mise failed to run Chezmoi from local source; falling back to official installer"
+                sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+                export PATH="$HOME/.local/bin:$PATH"
+                chezmoi init --apply --source "$PWD"
+            fi
         else
-            log_warn "Mise failed to run Chezmoi; falling back to official installer"
-            sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-            export PATH="$HOME/.local/bin:$PATH"
-            chezmoi init --apply "$REPO_URL"
+            if mise exec chezmoi -- init --apply "$REPO_URL"; then
+                log_info "Chezmoi ran via Mise successfully"
+            else
+                log_warn "Mise failed to run Chezmoi; falling back to official installer"
+                sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+                export PATH="$HOME/.local/bin:$PATH"
+                chezmoi init --apply "$REPO_URL"
+            fi
         fi
     else
         log_warn "Mise not available; using official Chezmoi installer"
         sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
         export PATH="$HOME/.local/bin:$PATH"
-        chezmoi init --apply "$REPO_URL"
+        if [ "$USE_PWD_SOURCE" -eq 1 ]; then
+            chezmoi init --apply --source "$PWD"
+        else
+            chezmoi init --apply "$REPO_URL"
+        fi
     fi
 fi
 

@@ -1,159 +1,146 @@
-# Dotfiles Repository Summary
+# Summary — Mise-centric dotfiles (chezmoi)
 
-This repository has been scaffolded with a complete setup for managing dotfiles using Chezmoi and development tools using Mise.
+This repository uses Chezmoi to manage your dotfiles and Mise to manage development tools and task orchestration. The workflow has been refactored so that a minimal bootstrap script ensures the `mise` binary is present, and all setup steps are implemented as small Mise tasks in `chezmoi/mise.toml`.
 
-## What Was Created
+This SUMMARY documents the current structure, the primary files, and the recommended flows for local and CI environments.
 
-### Core Files
+---
 
-1. **`.chezmoi.toml.tmpl`** - Chezmoi configuration template
-   - Prompts for user email and name during initialization
-   - Configures editor and diff pager preferences
+## What changed (high level)
 
-2. **`.chezmoiignore`** - Files to exclude from deployment
-   - Prevents repository metadata from being copied to home directory
+- The previous top-level installer/validator scripts (`install.sh`, `validate.sh`) have been removed.
+- Contribution and license documents were removed since this is a personal dotfiles repository.
+- A small, single-purpose script `chezmoi/setup.sh` now ensures `mise` exists, then delegates orchestration to Mise tasks.
+- Mise tasks live in `chezmoi/mise.toml` and implement the stepwise bootstrap and validation flows.
+- Tool installation now happens from the user-wide Mise config (e.g. `~/.config/mise/config.toml`) after `chezmoi apply` places that config in the user's home.
 
-3. **`.mise.toml`** - Development tool version management
-   - Python 3.12, Node 20, Go 1.21
-   - Modern CLI tools: eza, bat, ripgrep, fd, delta
+---
 
-### Dotfiles (Chezmoi Format)
+## Key files (current)
 
-1. **`dot_bashrc`** - Bash shell configuration
-   - Modern CLI tool aliases
-   - Git aliases
-   - Mise integration
+- `chezmoi/setup.sh` — minimal bootstrapper:
+  - Ensures `mise` binary exists (installs via `curl`/`wget` if missing).
+  - Prepends `$HOME/.local/bin` to PATH for the running process.
+  - Delegates orchestration to Mise tasks (default: `bootstrap`).
 
-2. **`dot_bash_profile`** - Bash login shell
-   - Sources .bashrc
-   - Sets up PATH
+- `chezmoi/mise.toml` — Mise task definitions:
+  - Small composable tasks: activation injection, local checks, running `chezmoi`, and installing tools from the user-wide config.
+  - Composite tasks:
+    - `bootstrap` — high-level setup (inject activation, activate mise for the session, run chezmoi apply, install tools from `~/.config/mise/config.toml`).
+    - `bootstrap:with-fish` — bootstrap + attempt to set fish as login shell (non-fatal; skipped in CI).
+    - `validate:all` — run repository validation tasks.
 
-3. **`dot_profile`** - POSIX shell profile
-   - Compatible with multiple shells
+- `dot_config/mise/config.toml` — repository-scoped tool list for Mise (optional).
+  - Usually used to define project-level tools; in this flow it can be applied before/after depending on preference.
+  - The canonical tool installation for your user is expected at `~/.config/mise/config.toml` after `chezmoi apply`.
 
-4. **`dot_gitconfig.tmpl`** - Git configuration template
-   - Uses Chezmoi variables for email/name
-   - Delta integration for better diffs
-   - Useful aliases
+- `dot_*` files — dotfiles tracked by Chezmoi (top-level `dot_` prefix becomes `.` in the home).
 
-5. **`dot_vimrc`** - Vim editor configuration
-   - Sensible defaults
-   - Line numbers, syntax highlighting
-   - Modern editing features
+---
 
-6. **`dot_config/git/ignore`** - Global git ignore patterns
-   - IDE files, OS files, build artifacts
+## Quick start — local (developer)
 
-### Setup Scripts
+1. Ensure `git` and either `curl` or `wget` are installed.
+2. From this repository's `chezmoi/` directory, run the setup script:
+   - `./chezmoi/setup.sh`  
+     This will:
+     - Install `mise` if needed.
+     - Activate `mise` for the current shell (best-effort).
+     - Run the Mise `bootstrap` task which runs `chezmoi apply` and then installs tools from the user-wide Mise config (if present).
 
-1. **`install.sh`** - One-command bootstrap script
-   - Installs Chezmoi and Mise
-   - Initializes dotfiles from repository
-   - Installs all tools defined in .mise.toml
+3. Alternatively, if you already have `mise` installed:
+   - `mise run bootstrap`
+   - Or run a validation: `mise run validate:all`
 
-2. **`validate.sh`** - Repository validation script
-   - Checks file structure
-   - Validates shell script syntax
-   - Verifies Chezmoi naming conventions
+---
 
-### Documentation
+## Quick start — CI
 
-1. **`README.md`** - Comprehensive documentation
-   - Quick start guide
-   - Usage instructions for Chezmoi and Mise
-   - Troubleshooting section
-   - Directory structure explanation
+Recommended patterns for CI runners:
 
-2. **`CONTRIBUTING.md`** - Contribution guidelines
-   - How to customize for personal use
-   - How to add new dotfiles and tools
-   - Best practices
+- Option A: Pre-install `mise` in the runner image, then run:
+  - `CI=1 mise run bootstrap`  
+    - `CI=1` instructs tasks to be strict: fail-fast for tool installs and avoid mutating runner profiles.
 
-3. **`LICENSE`** - MIT License
+- Option B: Use the repo script to install `mise` then run bootstrap:
+  - `CI=1 ./chezmoi/setup.sh bootstrap`  
+    - `setup.sh` will install `mise` if needed and then run the requested Mise task in CI-aware mode.
 
-### Examples
+Example (GitHub Actions style):
+```yaml
+name: bootstrap
 
-1. **`.chezmoi.toml.example`** - Example configurations
-2. **`.mise.toml.example`** - Tool configuration variations
+on: [push]
 
-## How to Use
-
-### Quick Start (New System)
-
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/rjallais/dotfiles/main/install.sh)"
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    env:
+      CI: 1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install prerequisites
+        run: sudo apt-get update && sudo apt-get install -y curl git
+      - name: Ensure Mise (install only)
+        run: ./chezmoi/setup.sh --skip-run
+      - name: Run bootstrap
+        run: ./chezmoi/setup.sh bootstrap
 ```
 
-### Manual Setup
+Notes:
+- In CI mode (`CI=1`), Mise tasks:
+  - Fail fast on tool-install errors.
+  - Skip mutating user shell profiles (activation injection is skipped).
+  - Treat missing `mise`/`chezmoi` as errors so CI can fail early.
 
-```bash
-git clone https://github.com/rjallais/dotfiles.git
-cd dotfiles
-./install.sh
-```
+---
 
-## Key Features
+## How the bootstrap flow works now (detailed)
 
-✅ **One-command setup** - Run install.sh to set up everything
-✅ **Template support** - Use variables for multi-machine configs
-✅ **Tool management** - Mise handles all development tools
-✅ **Modern CLI tools** - Includes eza, bat, ripgrep, fd, delta
-✅ **Version controlled** - All changes tracked in git
-✅ **Validation** - Built-in validation script
+1. `chezmoi/setup.sh` ensures the `mise` binary is available. It is the only place in the repo that installs `mise`.
+2. `mise run bootstrap` (or `setup.sh` delegating to it) performs:
+   - Optionally inject Mise activation into an interactive shell profile (skipped in CI).
+   - Activate Mise for the current shell so `mise exec` works in the same session.
+   - Run `mise exec chezmoi -- init --source <local-repo>` (if run from a checkout) and then `mise exec chezmoi -- apply`. This places the repository-managed files into the user's home (including `~/.config/mise/config.toml` if present).
+   - Install tools from the user-wide `~/.config/mise/config.toml` using `mise install --config=...`. In CI this step is fail-fast.
 
-## Architecture
+---
 
-### Chezmoi Workflow
-```
-Repository (dot_bashrc)
-    ↓ chezmoi apply
-Home Directory (~/.bashrc)
-```
+## Validation tasks
 
-### Mise Workflow
-```
-.mise.toml defines versions
-    ↓ mise install
-Tools installed to ~/.local/share/mise
-    ↓ mise activate
-Tools available in shell
-```
+Mise tasks also include validation helpers:
+- `validate:files` — check critical repository files exist (e.g. `.chezmoi.toml.tmpl`, `dot_config/mise/config.toml`).
+- `validate:syntax` — lightweight shell syntax checks for repo scripts (best-effort).
+- `validate:mise` — check for `mise` binary (in CI this is an error if missing).
+- `validate:chezmoi` — check for `chezmoi` availability (or via `mise exec`).
+- `validate:all` — runs the above validations.
 
-## Next Steps
+---
 
-1. **Customize** - Edit dotfiles to match your preferences
-2. **Add tools** - Add more tools to .mise.toml
-3. **Test** - Run validate.sh to check changes
-4. **Deploy** - Use install.sh on new systems
+## Removed / deprecated items
 
-## File Naming Convention
+- `install.sh`, `validate.sh` — removed. `chezmoi/setup.sh` + `chezmoi/mise.toml` replace their functionality.
+- `CONTRIBUTING.md`, `LICENSE` — removed (personal project).
+- README references to the removed scripts have been updated to point at the new `setup.sh` / `mise` task flow.
 
-Chezmoi uses special naming conventions:
-- `dot_` → `.` (e.g., `dot_bashrc` → `~/.bashrc`)
-- `.tmpl` → Template processing (e.g., `dot_gitconfig.tmpl` → `~/.gitconfig`)
-- `dot_config` → `~/.config` directory
+---
 
-## Dependencies
+## Notes & tips
 
-- **curl** or **wget** - For downloading installers
-- **git** - For cloning repository
-- **bash** - For running scripts
-- Internet connection for initial setup
+- Ensure `$HOME/.local/bin` is on your PATH so `mise` and other user-local binaries are discoverable:
+  ```bash
+  export PATH="$HOME/.local/bin:$PATH"
+  ```
+- If you want to use the Mise-managed `chezmoi` binary explicitly:
+  ```bash
+  mise exec chezmoi -- status
+  mise exec chezmoi -- apply
+  ```
+- To change which tools are installed for your user, update the configuration that Chezmoi applies to `~/.config/mise/config.toml` (or edit `dot_config/mise/config.toml` in the repo and let Chezmoi place it).
 
-## Troubleshooting
-
-If Chezmoi or Mise aren't found after installation:
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-To update shell integration:
-```bash
-eval "$(mise activate bash)"
-```
+---
 
 ## Resources
 
-- [Chezmoi Documentation](https://www.chezmoi.io/)
-- [Mise Documentation](https://mise.jdx.dev/)
-- [Repository on GitHub](https://github.com/rjallais/dotfiles)
+- Chezmoi docs: https://www.chezmoi.io/
+- Mise docs and tasks: https://mise.jdx.dev/

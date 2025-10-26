@@ -1,0 +1,371 @@
+# Mise task definitions for chezmoi repository (CI-aware, mise installation handled externally)
+#
+# This file intentionally does NOT attempt to install the `mise` binary.
+# The repository's `setup.sh` is responsible for ensuring `mise` is present.
+#
+# Tasks are CI-aware:
+#  - If the environment variable CI is set (a common CI convention), tasks will:
+#      * Avoid mutating user shell profiles (no activation injection)
+#      * Fail fast on tool-install errors
+#  - If CI is not set, tasks are tolerant and will print warnings instead of failing in some cases.
+#
+# High-level flow:
+#   mise run bootstrap
+#   (or run individual tasks for finer control)
+#
+# Author: updated to be mise-installation agnostic and CI-friendly
+
+# Helper utility functions are embedded where needed in each task to be portable.
+
+[tasks."detect:shell-profile"]
+description = "Detect a suitable interactive shell profile file and print its path"
+run = '''
+# prints the path to stdout for consumption by other tasks (if needed)
+if command -v fish >/dev/null 2>&1; then
+  echo "$HOME/.config/fish/config.fish"
+  exit 0
+fi
+# prefer bash rc for non-fish interactive shells
+if [ -n "${BASH_VERSION:-}" ]; then
+  echo "$HOME/.bashrc"
+  exit 0
+fi
+if [ -n "${ZSH_VERSION:-}" ]; then
+  echo "$HOME/.zshrc"
+  exit 0
+fi
+# fallback
+echo "$HOME/.profile"
+'''
+
+[tasks."inject:mise-activation"]
+description = "Add Mise activation to an interactive shell profile (idempotent). Skipped in CI."
+run = '''
+# CI-aware: don't modify user profiles in CI environments
+if [ -n "${CI:-}" ]; then
+  echo "CI environment detected; skipping profile modification"
+  exit 0
+fi
+
+# Ensure mise binary present (setup.sh should have ensured this)
+if ! command -v mise >/dev/null 2>&1; then
+  echo "ERROR: mise not found in PATH. Ensure 'mise' is installed before running this task." >&2
+  exit 1
+fi
+
+# Determine target profile similar to detect:shell-profile
+PROFILE=""
+if command -v fish >/dev/null 2>&1; then
+  PROFILE="$HOME/.config/fish/config.fish"
+  LINE='eval (mise activate fish)'
+else
+  # use bash-style activation for bash/zsh/other sh
+  PROFILE="$HOME/.bashrc"
+  if [ -n "${ZSH_VERSION:-}" ]; then PROFILE="$HOME/.zshrc"; fi
+  LINE='eval "$(mise activate bash)"'
+fi
+
+mkdir -p "$(dirname "$PROFILE")"
+touch "$PROFILE"
+
+if grep -Fq "$LINE" "$PROFILE" 2>/dev/null; then
+  echo "Mise activation already present in $PROFILE"
+  exit 0
+fi
+
+echo "" >> "$PROFILE"
+echo "# Activate Mise for interactive sessions" >> "$PROFILE"
+echo "$LINE" >> "$PROFILE"
+echo "Appended mise activation to $PROFILE"
+'''
+
+[tasks."activate:mise-now"]
+description = "Activate Mise in the current shell so tasks can use Mise immediately (best-effort)"
+run = '''
+# Ensure mise binary present
+if ! command -v mise >/dev/null 2>&1; then
+  echo "ERROR: 'mise' not found on PATH. Ensure mise is installed (via setup.sh) before running this task." >&2
+  exit 1
+fi
+
+# Try to activate for both bash-style and fish-style; non-fatal activation
+set +e
+eval "$(mise activate bash 2>/dev/null || true)"
+eval "$(mise activate fish 2>/dev/null || true)" || true
+set -e
+
+echo "Attempted to activate Mise for the current shell (best-effort)."
+'''
+
+[tasks."install:tools:local"]
+description = "Install tools from repository-local dot_config/mise/config.toml (if present). In CI this fails fast on errors."
+run = '''
+# Fail fast in CI, otherwise tolerate failures and emit warnings.
+CI_FAIL=false
+if [ -n "${CI:-}" ]; then
+  CI_FAIL=true
+fi
+
+if [ -f "dot_config/mise/config.toml" ]; then
+  echo "Installing tools from dot_config/mise/config.toml..."
+  if mise install --config="dot_config/mise/config.toml"; then
+    echo "Local tools installed successfully."
+  else
+    if [ "$CI_FAIL" = true ]; then
+      echo "ERROR: mise install failed (CI mode)"; exit 1
+    else
+      echo "WARNING: mise install reported failures (continuing)"
+    fi
+  fi
+else
+  echo "No dot_config/mise/config.toml found in checkout; skipping local mise install"
+fi
+'''
+
+[tasks."run:chezmoi"]
+description = "Run Chezmoi via Mise; prefer local checkout when available. Fails if mise is missing."
+run = '''
+# Ensure mise binary present
+if ! command -v mise >/dev/null 2>&1; then
+  echo "ERROR: 'mise' not found on PATH. Ensure mise is installed (via setup.sh) before running this task." >&2
+  exit 1
+fi
+
+REPO_URL="${1:-https://github.com/rjallais/dotfiles.git}"
+
+# Prefer running from local checkout if it looks like the repository
+if [ -d ".git" ] || [ -f ".chezmoi.toml.tmpl" ] || [ -f "dot_config/mise/config.toml" ]; then
+  echo "Initializing chezmoi from local checkout (source: $PWD)"
+  mise exec chezmoi -- init --apply --source "$PWD"
+else
+  echo "Initializing chezmoi from remote repository: $REPO_URL"
+  mise exec chezmoi -- init --apply "$REPO_URL"
+fi
+'''
+
+[tasks."install:tools:applied"]
+description = "Install tools from the user-wide Mise config (~/.config/mise/config.toml) after chezmoi apply. In CI this fails fast."
+depends = ["run:chezmoi"]
+run = '''
+CI_FAIL=false
+if [ -n "${CI:-}" ]; then
+  CI_FAIL=true
+fi
+
+USER_CONFIG="$HOME/.config/mise/config.toml"
+if [ -f "$USER_CONFIG" ]; then
+  echo "Installing tools from user-wide Mise config: $USER_CONFIG"
+  if mise install --config="$USER_CONFIG"; then
+    echo "User-wide tools installed successfully."
+  else
+    if [ "$CI_FAIL" = true ]; then
+      echo "ERROR: mise install (user-wide) failed (CI mode)"; exit 1
+    else
+      echo "WARNING: mise install (user-wide) reported failures"
+    fi
+  fi
+else
+  echo "User-wide Mise config not found at $USER_CONFIG; skipping"
+fi
+'''
+
+[tasks."set:fish-login-shell"]
+description = "Attempt to set fish as the login shell (requires sudo or chsh permission); non-fatal. Skipped in CI."
+run = '''
+if [ -n "${CI:-}" ]; then
+  echo "CI environment detected; skipping change of login shell"
+  exit 0
+fi
+
+if ! command -v fish >/dev/null 2>&1; then
+  echo "fish not installed; skipping change of login shell"
+  exit 0
+fi
+
+if command -v sudo >/dev/null 2>&1; then
+  echo "Attempting to set fish as login shell for current user"
+  sudo chsh -s "$(command -v fish)" "${USER:-$(whoami)}" || echo "Failed to change login shell (continuing)"
+else
+  echo "sudo not available; cannot change login shell automatically (skipping)"
+fi
+'''
+
+# Composite orchestration tasks (no attempt to install mise here)
+[tasks.bootstrap]
+description = "Full Mise-centric bootstrap (assumes 'mise' is already installed). CI-friendly. Run chezmoi apply before installing tools."
+run = [
+  { task = "inject:mise-activation" },
+  { task = "activate:mise-now" },
+  { task = "run:chezmoi" },
+  { task = "install:tools:applied" }
+]
+
+[tasks."bootstrap:with-fish"]
+description = "Run bootstrap and try to set fish as login shell (skips login-shell change in CI)"
+run = [
+  { task = "bootstrap" },
+  { task = "set:fish-login-shell" }
+]
+
+# ----------------------
+# Validation tasks (CI-aware)
+# ----------------------
+[tasks."validate:files"]
+description = "Check critical repository files exist (removed references to removed scripts). Exits non-zero if missing."
+run = '''
+OK=0
+for f in .chezmoi.toml.tmpl .chezmoiignore README.md dot_config/mise/config.toml; do
+  if [ -f "$f" ]; then
+    printf "OK: %s exists\n" "$f"
+  else
+    printf "ERR: %s missing\n" "$f" >&2
+    OK=1
+  fi
+done
+exit $OK
+'''
+
+[tasks."validate:syntax"]
+description = "Basic shell syntax checks for common scripts (bash -n) - best-effort"
+run = '''
+set +e
+for s in dot_bashrc dot_bash_profile dot_profile; do
+  if [ -f "$s" ]; then
+    if bash -n "$s" 2>/dev/null; then
+      echo "OK: $s syntax looks valid"
+    else
+      echo "WARN: $s has syntax errors (bash -n)"
+    fi
+  fi
+done
+set -e
+'''
+
+[tasks."validate:mise"]
+description = "Check for Mise availability (or show install suggestion). In CI, this is treated as an error if missing."
+run = '''
+if command -v mise >/dev/null 2>&1; then
+  echo "OK: mise found at $(command -v mise)"
+  exit 0
+fi
+
+if [ -n "${CI:-}" ]; then
+  echo "ERROR: mise not found in PATH (CI mode expects mise preinstalled)" >&2
+  exit 1
+fi
+
+echo "WARN: mise not found in PATH"
+if command -v curl >/dev/null 2>&1; then
+  echo "Suggestion: curl -fsSL https://mise.run | sh"
+elif command -v wget >/dev/null 2>&1; then
+  echo "Suggestion: wget -qO- https://mise.run | sh"
+else
+  echo "Cannot suggest automatic install because neither curl nor wget are available"
+fi
+exit 0
+'''
+
+[tasks."validate:chezmoi"]
+description = "Check if chezmoi is available in PATH or via mise exec. In CI this is an error if unmet."
+run = '''
+if command -v chezmoi >/dev/null 2>&1; then
+  echo "OK: chezmoi found at $(command -v chezmoi)"
+  exit 0
+fi
+if command -v mise >/dev/null 2>&1; then
+  if mise exec chezmoi -- --version >/dev/null 2>&1; then
+    echo "OK: chezmoi available via mise exec"
+    exit 0
+  else
+    echo "WARN: mise present but 'mise exec chezmoi' failed"
+    if [ -n "${CI:-}" ]; then
+      echo "ERROR: CI mode: chezmoi not available via mise" >&2
+      exit 1
+    fi
+    exit 0
+  fi
+fi
+
+if [ -n "${CI:-}" ]; then
+  echo "ERROR: chezmoi not found and mise not available (CI mode expects them preinstalled)" >&2
+  exit 1
+fi
+
+echo "WARN: chezmoi not found"
+exit 0
+'''
+
+[tasks."validate:mise-config"]
+description = "Check for repo mise config (dot_config/mise/config.toml or .mise.toml)"
+run = '''
+if [ -f "dot_config/mise/config.toml" ]; then
+  echo "OK: dot_config/mise/config.toml present"
+elif [ -f ".mise.toml" ]; then
+  echo "OK: .mise.toml present"
+else
+  echo "WARN: no mise config found in repository common locations"
+fi
+'''
+
+[tasks."validate:shell-activation"]
+description = "Check common shell profiles for Mise activation lines. In CI we do a smoke check only."
+run = '''
+profiles=("$HOME/.config/fish/config.fish" "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile")
+found=0
+for p in "${profiles[@]}"; do
+  if [ -f "$p" ]; then
+    if grep -q -E 'mise activate|mise activate fish|mise activate bash|mise activate zsh' "$p" 2>/dev/null; then
+      echo "OK: mise activation found in $p"
+      found=1
+    else
+      echo "NOTE: no mise activation in $p"
+    fi
+  fi
+done
+if [ $found -eq 0 ]; then
+  if [ -n "${CI:-}" ]; then
+    echo "NOTE: CI environment detected: shell profile activation may not be present (expected)"
+  else
+    echo "WARN: no Mise activation found in checked profiles"
+  fi
+fi
+'''
+
+[tasks."validate:dotfiles"]
+description = "Verify presence of dot_* top-level files expected by Chezmoi"
+run = '''
+count=$(find . -maxdepth 1 -name "dot_*" -type f | wc -l || echo 0)
+if [ "$count" -gt 0 ]; then
+  echo "OK: found $count dot_* files"
+else
+  echo "WARN: no dot_* files found at repo top-level"
+fi
+'''
+
+[tasks."validate:all"]
+description = "Run all validation checks (CI-safe; in CI some checks may return non-zero)"
+run = [
+  { task = "validate:files" },
+  { task = "validate:syntax" },
+  { task = "validate:mise" },
+  { task = "validate:chezmoi" },
+  { task = "validate:mise-config" },
+  { task = "validate:shell-activation" },
+  { task = "validate:dotfiles" }
+]
+
+# Help / discoverability
+[tasks."help"]
+description = "Show a short summary of available tasks"
+run = '''
+echo "Common tasks:"
+echo "  mise run bootstrap            # full Mise-centric install (assumes mise is installed)"
+echo "  mise run bootstrap:with-fish  # bootstrap and attempt to set fish as login shell (skips in CI)"
+echo "  mise run validate:all         # run validation checks"
+echo ""
+echo "CI notes:"
+echo "  - Set the environment variable CI=1 (or let your CI system set it) to enable strict/fail-fast behavior"
+echo ""
+echo "Local setup:"
+echo "  - Use the repository-provided setup.sh to ensure 'mise' is installed before running these tasks."
+'''

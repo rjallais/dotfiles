@@ -1,13 +1,9 @@
 # Files and directories to ignore when applying dotfiles
 
-README.md
+# Keep README.md in the repo root (do not ignore it)
 SUMMARY.md
-LICENSE
-CONTRIBUTING.md
 .git/
 .github/
-install.sh
 bootstrap.sh
-validate.sh
 .mise.toml
 *.example

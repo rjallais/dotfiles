@@ -1,20 +1,29 @@
-# ~/.bash_profile - Bash login shell configuration
+# .bash_profile
 
-# Source .bashrc if it exists
+# Get the aliases and functions
 if [ -f ~/.bashrc ]; then
     . ~/.bashrc
 fi
+# 
+# User specific environment and startup programs
 
-# Add user's private bin to PATH if it exists
-if [ -d "$HOME/.local/bin" ] ; then
-    PATH="$HOME/.local/bin:$PATH"
+# Start fish shell for interactive sessions
+if [[ "$-" == *i*]] && [ -t 1 ]; then
+  # Parent process command name (best-effort)
+  parent=$(ps -o comm= "$PPID" 2>/dev/null || true)
+
+  case "$parent" in
+    *ijent*|*jetbrains*|*idea*|*tmp* )
+      # Don't replace shell when launched by JetBrains temporary helpers or similar
+      ;;
+    *)
+      # Replace bash with a login fish for normal interactive terminals
+      exec /usr/sbin/fish -l
+      ;;
+  esac
 fi
 
-if [ -d "$HOME/bin" ] ; then
-    PATH="$HOME/bin:$PATH"
-fi
 
-# Load mise if available
-if command -v mise &> /dev/null; then
-    eval "$(mise activate bash)"
-fi
+# Added by Toolbox App
+export PATH="$PATH:/home/rjallais/.local/share/JetBrains/Toolbox/scripts"
+

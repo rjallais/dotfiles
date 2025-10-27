@@ -7,6 +7,13 @@ fish_add_path /usr/local/cuda-12.9/bin
 # Use set -gx to prepend and export LD_LIBRARY_PATH
 set -gx LD_LIBRARY_PATH /usr/local/cuda-12.9/lib64 $LD_LIBRARY_PATH
 
+mise activate fish | source
+
+# Initialize starship if it's installed (version-independent)
+if command -q starship
+    starship init fish | source
+end
+
 # 2) Only in interactive sessions…
 if status is-interactive
     # Commands to run in interactive sessions can go here
@@ -19,10 +26,6 @@ if status is-interactive
         # mise completion fish > ~/.config/fish/completions/mise.fish
     # end
 
-    # 2b) Initialize starship if it’s installed
-    if test -x $HOME/.local/share/mise/installs/starship/1.23.0
-        eval ($HOME/.local/share/mise/installs/starship/1.23.0/starship init fish)
-    end
 
     # Ensure XDG_CONFIG_HOME falls back to ~/.config
     set -l config_home $XDG_CONFIG_HOME; or set config_home $HOME/.config
@@ -55,4 +58,3 @@ for path_item in $PATH
     end
 end
 set -gx PATH $unique_paths
-mise activate fish | source

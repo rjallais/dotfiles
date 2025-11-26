@@ -1,5 +1,5 @@
 [tools]
-"aqua:atuin/atuin" = "latest"
+atuin = "latest"
 "aqua:nushell/nushell" = "latest"
 "aqua:Wilfred/difftastic" = "latest"
 "aqua:charmbracelet/crush" = "latest"
@@ -37,7 +37,9 @@ starship = "latest"
 usage = "latest"
 uv = "latest"
 yt-dlp = "latest"
-"zoxide" = "latest"
+zoxide = "latest"
+delta = "latest"
+carapace = "latest"
 
 [settings]
 experimental = true

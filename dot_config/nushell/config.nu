@@ -16,27 +16,26 @@
 # You can also pretty-print and page through the documentation for configuration
 # options using:
 #     config nu --doc | nu-highlight | less -R
+use std/util "path add"
 
-# Source mise configuration (already present)
-use ($nu.default-config-dir | path join mise.nu)
+mkdir ($nu.data-dir | path join "vendor/autoload")
 
-# Starship prompt
-if (which starship | is-not-empty) {
-    starship init nu | save -f ~/.config/nushell/starship_init.nu
-    source ~/.config/nushell/starship_init.nu
-}
+path add "~/.local/bin"
 
-# Atuin history
-if (which atuin | is-not-empty) {
-    atuin init nu | save -f ~/.config/nushell/atuin_init.nu
-    source ~/.config/nushell/atuin_init.nu
-}
+# Mise (mise-en-place)
+^mise activate nu | save -f ($nu.data-dir | path join "vendor/autoload/mise.nu")
 
-# Zoxide directory jumper
-if (which zoxide | is-not-empty) {
-    zoxide init nu | save -f ~/.config/nushell/zoxide_init.nu
-    source ~/.config/nushell/zoxide_init.nu
-}
+# Starship
+mise x starship -- starship init nu | save -f ($nu.data-dir | path join "vendor/autoload/starship.nu")
+
+# Zoxide
+mise x zoxide -- zoxide init nushell | save -f ($nu.data-dir | path join "vendor/autoload/zoxide.nu")
+
+# Atuin
+mise x atuin -- atuin init nu | save -f ($nu.data-dir | path join "vendor/autoload/atuin.nu")
+
+# Carapace
+mise x carapace -- carapace _carapace nushell | save -f ($nu.data-dir | path join "vendor/autoload/carapace.nu")
 
 # Custom aliases or functions can go here
 # For example:

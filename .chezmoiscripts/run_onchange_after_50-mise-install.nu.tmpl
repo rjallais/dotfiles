@@ -1,0 +1,11 @@
+#!/usr/bin/env nu
+# Re-runs only when mise config changes (chezmoi tracks the hash below)
+# Hash: {{ include "dot_config/mise/config.toml" | sha256sum }}
+
+print "Trusting mise configuration..."
+mise trust --all | ignore
+
+print "Installing mise tools (this may take a while on first run)..."
+mise install --yes
+
+print "Mise tools installed/updated!"

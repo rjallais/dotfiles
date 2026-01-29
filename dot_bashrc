@@ -58,7 +58,11 @@ PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 
 # Load mise
 if command -v mise &> /dev/null; then
-    eval "$(mise activate bash)"
+    # Only activate mise when running an interactive bash session
+    case "$-" in
+        *i*) export SHELL_TYPE=bash; eval "$(mise activate bash)";;
+        *) ;;
+    esac
 fi
 
 # enable the starship prompt

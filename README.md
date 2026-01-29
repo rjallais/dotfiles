@@ -1,189 +1,157 @@
-# Dotfiles — Mise-centric bootstrap
+# Dotfiles
 
-A modern dotfiles repository using [Chezmoi](https://www.chezmoi.io/) for dotfile management and [Mise](https://mise.jdx.dev/) for development tool version management.
+Cross-platform dotfiles using [Chezmoi](https://www.chezmoi.io/) and [Mise](https://mise.jdx.dev/). All bootstrap scripts are written in [Nushell](https://www.nushell.sh/) for Windows/macOS/Linux compatibility.
 
-This repository uses a Mise-first approach:
+## Quick Start
 
-- A minimal `setup.sh` (in this repo) ensures the `mise` binary is available on the host (installing it if necessary).
-- After `mise` is available, all bootstrap and validation work is performed by small, focused Mise tasks defined in `chezmoi/mise.toml`.
-- Chezmoi is run via `mise exec chezmoi` so the version of Chezmoi can be controlled through Mise if desired.
-- Tool installation is driven by `dot_config/mise/config.toml` (repository-controlled).
+### macOS / Linux
 
-This README documents the new flow and how to use the `setup.sh` + Mise tasks approach.
-
-## Quick start
-
-Recommended local flow (developer machine)
-
-1. Ensure you have `git` and either `curl` or `wget` available.
-2. From this repository's `chezmoi` directory, run the setup script. By default it ensures `mise` is present and runs the high-level `bootstrap` task:
-
-```chezmoi/README.md#L1-6
-./setup.sh
+```bash
+curl https://mise.run | sh && sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply rjallais
 ```
 
-3. To run a specific Mise task (for example, validation), pass the task name:
+### Windows (PowerShell - Run as Administrator)
 
-```chezmoi/README.md#L7-10
-./setup.sh validate:all
+```powershell
+$v = (irm https://api.github.com/repos/jdx/mise/releases/latest).tag_name; $arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x64" }; irm "https://github.com/jdx/mise/releases/download/$v/mise-$v-windows-$arch.zip" -OutFile "$env:TEMP\mise.zip"; Expand-Archive "$env:TEMP\mise.zip" -Dest "$env:LOCALAPPDATA\mise" -Force; $env:Path = "$env:LOCALAPPDATA\mise;$env:Path"; [Environment]::SetEnvironmentVariable("Path", "$env:LOCALAPPDATA\mise;$([Environment]::GetEnvironmentVariable('Path', 'User'))", 'User'); irm get.chezmoi.io/ps1 | powershell -c -; chezmoi init --apply rjallais
 ```
 
-Direct Mise usage (if you already have `mise` installed)
+That's it! These one-liners:
+1. Download and install mise (with self-update capability)
+2. Download and install chezmoi
+3. Clone this repository
+4. Prompt for your name and email
+5. Apply all dotfiles
+6. Run `mise install` to install all development tools
 
-- Run the bootstrap task directly:
+## What Gets Installed
 
-```chezmoi/README.md#L11-13
-mise run bootstrap
+### Dotfiles
+- Shell configs: `.bashrc`, `.profile`, `.bash_profile`
+- Git config with delta diff viewer
+- Nushell configuration
+- Fish shell configuration
+- Starship prompt
+
+### Development Tools (via Mise)
+
+See `dot_config/mise/config.toml` for the full list. Highlights:
+
+| Category | Tools |
+|----------|-------|
+| **Shell** | Nushell, Starship, Atuin, Zoxide, Carapace |
+| **Languages** | Go, Node.js, Bun, Python (via uv) |
+| **CLI Tools** | ripgrep, fd, bat, lsd, fzf, delta, dust, bottom |
+| **Dev Tools** | GitHub CLI, chezmoi, cmake, sqlite |
+
+## Daily Usage
+
+### Updating Dotfiles
+
+```bash
+chezmoi update        # Pull latest and apply
+chezmoi diff          # See what would change
+chezmoi apply         # Apply changes
 ```
 
-- Run all validations:
+### Managing Tools
 
-```chezmoi/README.md#L14-16
-mise run validate:all
+```bash
+mise ls               # List installed tools
+mise install          # Install/update tools from config
+mise outdated         # Check for updates
+mise use node@22      # Switch to specific version
+mise self-update      # Update mise itself
 ```
 
-## What the bootstrap does
+### Editing Dotfiles
 
-The `bootstrap` flow (implemented as Mise tasks) performs these steps:
-
-- Injects Mise activation into a likely interactive shell profile (idempotent; skipped in CI).
-- Activates Mise for the running shell (best-effort).
-- Installs tools declared in the repository-local `dot_config/mise/config.toml` (if present).
-- Runs Chezmoi (via `mise exec chezmoi`) to initialize and apply dotfiles.
-- Installs tools declared in the applied copy of the repository (the chezmoi data in `~/.local/share/chezmoi`).
-
-Tool installation is performed using Mise and can be strict (fail-fast) in CI mode.
-
-## Key files
-
-- `chezmoi/setup.sh` — minimal bootstrap that ensures `mise` binary is present and then runs Mise tasks
-- `chezmoi/mise.toml` — Mise task definitions (small, composable tasks, plus `bootstrap` and validation tasks)
-- `dot_config/mise/config.toml` — repository-controlled Mise tool version configuration (if present)
-- Chezmoi dotfiles in this repo (prefixed with `dot_` and templates with `.tmpl`)
-
-## Directory structure (relevant subset)
-
-``chezmoi/README.md#L1-14
-.
-├── chezmoi/
-│   ├── mise.toml                # Mise task definitions
-│   ├── setup.sh                 # Ensures mise is present, runs mise tasks
-│   └── README.md                # This file
-├── dot_config/
-│   └── mise/
-│       └── config.toml          # Tools and versions managed by Mise
-└── dot_*                        # Dotfiles (Chezmoi source files)
+```bash
+chezmoi edit ~/.bashrc   # Edit source, then apply
+chezmoi cd               # Go to source directory
 ```
 
-## Usage: Chezmoi commands (after bootstrap)
+## How It Works
 
-You can use the Chezmoi binary (either globally installed or managed by Mise) as usual:
+### Bootstrap Flow
 
-``chezmoi/README.md#L15-22
-chezmoi status     # Check which dotfiles have changed
-chezmoi diff       # See differences
-chezmoi edit <file>  # Edit a dotfile's source
-chezmoi apply      # Apply changes managed by chezmoi
+```
+One-liner installs mise + chezmoi, then:
+
+chezmoi init --apply
+    │
+    ├── 1. run_before_00-ensure-dirs.nu (creates ~/.local/bin via mise x nu --)
+    ├── 2. Dotfiles applied (configs, shell rc files)
+    └── 3. run_onchange_after_50-mise-install.nu.tmpl (mise install)
 ```
 
-If you prefer the Mise-provided Chezmoi:
+### Key Files
 
-``chezmoi/README.md#L23-25
-mise exec chezmoi -- status
-mise exec chezmoi -- apply
+| File | Purpose |
+|------|---------|
+| `.chezmoi.toml.tmpl` | Prompts for name/email, configures nu interpreter |
+| `.chezmoiscripts/run_before_*.nu` | Pre-apply setup (directories) |
+| `.chezmoiscripts/run_onchange_*.nu.tmpl` | Post-apply actions (mise install) |
+| `dot_config/mise/config.toml` | Tool versions managed by mise |
+
+### Why Nushell Scripts?
+
+All chezmoi scripts use Nushell (`.nu`) instead of Bash/PowerShell because:
+- **Cross-platform**: Same syntax on Windows, macOS, and Linux
+- **Modern**: Structured data, better error handling
+- **No system dependency**: Nushell is provided by mise via `mise x nu --`
+
+The interpreter configuration in `.chezmoi.toml.tmpl`:
+```toml
+[interpreters.nu]
+    command = "mise"
+    args = ["x", "aqua:nushell/nushell", "--"]
 ```
 
-## Usage: Mise commands
+This means chezmoi runs `.nu` scripts through mise, which provides Nushell on-demand.
 
-Manage tools with Mise. Examples:
+## Alternative Installation
 
-``chezmoi/README.md#L26-31
-mise ls                       # List installed tools
-mise install --config="dot_config/mise/config.toml"  # Install repository tools
-mise outdated                 # Check for outdated tools
-mise use node@20              # Install/use a specific version
+If you prefer to install mise via a package manager (note: `mise self-update` won't work):
+
+### macOS
+```bash
+brew install mise
 ```
 
-## CI guidance
-
-This repository's Mise tasks are CI-aware. In CI:
-
-- Set `CI=1` or let your CI system set it.
-- When `CI` is set, tasks:
-  - Fail fast on mise tool-install errors.
-  - Avoid mutating user shell profiles (activation injection is skipped).
-  - Treat missing `mise` or `chezmoi` as hard errors (so your CI can fail early).
-
-A minimal GitHub Actions example:
-
-``chezmoi/README.md#L32-48
-name: bootstrap
-
-on: [push]
-
-jobs:
-  bootstrap:
-    runs-on: ubuntu-latest
-    env:
-      CI: 1
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install prerequisites
-        run: sudo apt-get update && sudo apt-get install -y curl git
-      - name: Ensure Mise (installer will be used by setup.sh)
-        run: ./chezmoi/setup.sh --skip-run
-      - name: Run bootstrap
-        run: ./chezmoi/setup.sh bootstrap
+### Windows
+```powershell
+scoop install mise    # or: winget install jdx.mise
 ```
 
-Notes:
-- You can pre-install `mise` in the CI image and skip the installer, but `setup.sh` will install Mise automatically if missing.
-- The `--skip-run` option is useful to only ensure `mise` exists in a step separate from running tasks; it is optional.
+### Linux (various)
+```bash
+# Fedora/RHEL
+dnf copr enable jdxcode/mise && dnf install mise
 
-## Customization and configuration
+# Arch
+pacman -S mise
 
-- To change tool versions, edit `dot_config/mise/config.toml` in the repository.
-- Chezmoi template variables and the `chezmoi` configuration template are in the repository to support multi-machine customization. Use `chezmoi edit-config` or edit `.chezmoi.toml.tmpl` as appropriate.
-
-## Troubleshooting
-
-- Mise not found after installation:
-``chezmoi/README.md#L49-50
-export PATH="$HOME/.local/bin:$PATH"
+# Alpine
+apk add mise
 ```
 
-- Mise not activating in your shell:
-``chezmoi/README.md#L51-56
-# Fish
-eval (mise activate fish)
-
-# Bash
-eval "$(mise activate bash)"
-
-# Zsh
-eval "$(mise activate zsh)"
+Then run chezmoi separately:
+```bash
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply rjallais
 ```
 
-- If a tool fails to install via Mise, check the tool's system dependencies and install them via your package manager (examples for Ubuntu/Debian shown below):
+## Supported Systems
 
-``chezmoi/README.md#L57-62
-sudo apt-get install -y build-essential libssl-dev
-```
+| Platform | Status |
+|----------|--------|
+| macOS (Intel/ARM) | ✅ Tested |
+| Linux (x64/ARM) | ✅ Tested |
+| Windows 10/11 (x64) | ✅ Tested |
+| Bazzite/Bluefin | ✅ Tested |
 
-## Removing old scripts
+## Customization
 
-This repository no longer uses the previous installer/validator scripts. The new flow centralizes `mise` installation verification in `chezmoi/setup.sh`, and delegates all orchestration to Mise tasks defined in `chezmoi/mise.toml`. Any references to older top-level installer scripts have been removed.
-
-
-
-
-
-## Resources
-
-- Chezmoi: https://www.chezmoi.io/
-- Mise docs and tasks: https://mise.jdx.dev/
-- Mise tasks file in this repo: `chezmoi/mise.toml`
-
-If you'd like, I can also:
-- Add a short README section showing common Mise task names and a recommended local development sequence.
-- Add a GitHub Actions workflow file to the repo as an example.
+- Edit `.chezmoi.toml.tmpl` to change prompted variables
+- Edit `dot_config/mise/config.toml` to change which tools are installed
+- Edit `dot_config/nushell/config.nu` for Nushell configuration

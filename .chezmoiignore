@@ -1,7 +1,0 @@
-# Files to ignore when applying dotfiles (not copied to ~)
-
-README.md
-LICENSE
-.git/
-.github/
-*.example

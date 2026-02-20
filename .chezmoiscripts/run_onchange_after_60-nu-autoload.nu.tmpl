@@ -1,0 +1,16 @@
+#!/usr/bin/env nu
+# Re-runs when mise or Nushell startup config changes
+# Hash: {{ include "dot_config/mise/config.toml" | sha256sum }}{{ include "dot_config/nushell/config.nu" | sha256sum }}{{ include "dot_config/nushell/env.nu" | sha256sum }}{{ include "AppData/Roaming/nushell/config.nu" | sha256sum }}{{ include "AppData/Roaming/nushell/env.nu" | sha256sum }}
+
+let autoload_dir = ($nu.data-dir | path join "vendor" "autoload")
+mkdir $autoload_dir
+
+print "Generating Nushell autoload scripts..."
+
+^mise activate nu | save -f ($autoload_dir | path join "mise.nu")
+mise exec starship -- starship init nu | save -f ($autoload_dir | path join "starship.nu")
+mise exec zoxide -- zoxide init nushell | save -f ($autoload_dir | path join "zoxide.nu")
+mise exec atuin -- atuin init nu | save -f ($autoload_dir | path join "atuin.nu")
+mise exec carapace -- carapace _carapace nushell | save -f ($autoload_dir | path join "carapace.nu")
+
+print "Nushell autoload scripts refreshed"

@@ -7,18 +7,18 @@ Cross-platform dotfiles using [Chezmoi](https://www.chezmoi.io/) and [Mise](http
 ### macOS / Linux
 
 ```bash
-curl https://mise.run | sh && sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply rjallais
+curl https://mise.run | sh && ~/.local/bin/mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
 ```
 
-### Windows (PowerShell - Run as Administrator)
+### Windows (PowerShell)
 
 ```powershell
-$v = (irm https://api.github.com/repos/jdx/mise/releases/latest).tag_name; $arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x64" }; irm "https://github.com/jdx/mise/releases/download/$v/mise-$v-windows-$arch.zip" -OutFile "$env:TEMP\mise.zip"; Expand-Archive "$env:TEMP\mise.zip" -Dest "$env:LOCALAPPDATA\mise" -Force; $env:Path = "$env:LOCALAPPDATA\mise;$env:Path"; [Environment]::SetEnvironmentVariable("Path", "$env:LOCALAPPDATA\mise;$([Environment]::GetEnvironmentVariable('Path', 'User'))", 'User'); irm get.chezmoi.io/ps1 | powershell -c -; chezmoi init --apply rjallais
+$v = (irm https://api.github.com/repos/jdx/mise/releases/latest).tag_name; $arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x64" }; irm "https://github.com/jdx/mise/releases/download/$v/mise-$v-windows-$arch.zip" -OutFile "$env:TEMP\mise.zip"; Expand-Archive "$env:TEMP\mise.zip" -Dest "$env:LOCALAPPDATA\mise" -Force; $env:Path = "$env:LOCALAPPDATA\mise;$env:Path"; [Environment]::SetEnvironmentVariable("Path", "$env:LOCALAPPDATA\mise;$([Environment]::GetEnvironmentVariable('Path', 'User'))", 'User'); & "$env:LOCALAPPDATA\mise\mise.exe" exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
 ```
 
 That's it! These one-liners:
 1. Download and install mise (with self-update capability)
-2. Download and install chezmoi
+2. Run `chezmoi` through `mise exec` (alias: `mise x`) and auto-install it
 3. Clone this repository
 4. Prompt for your name and email
 5. Apply all dotfiles
@@ -29,7 +29,7 @@ That's it! These one-liners:
 ### Dotfiles
 - Shell configs: `.bashrc`, `.profile`, `.bash_profile`
 - Git config with delta diff viewer
-- Nushell configuration
+- Nushell configuration (`~/.config/nushell` on Linux/macOS, `%APPDATA%/nushell` on Windows)
 - Fish shell configuration
 - Starship prompt
 
@@ -76,13 +76,14 @@ chezmoi cd               # Go to source directory
 ### Bootstrap Flow
 
 ```
-One-liner installs mise + chezmoi, then:
+One-liner installs mise, then runs chezmoi via mise:
 
-chezmoi init --apply
+mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply
     │
-    ├── 1. run_before_00-ensure-dirs.nu (creates ~/.local/bin via mise x nu --)
+    ├── 1. run_before_00-ensure-dirs.nu (creates required Linux/Windows config directories)
     ├── 2. Dotfiles applied (configs, shell rc files)
-    └── 3. run_onchange_after_50-mise-install.nu.tmpl (mise install)
+    ├── 3. run_onchange_after_50-mise-install.nu.tmpl (mise install)
+    └── 4. run_onchange_after_60-nu-autoload.nu.tmpl (generate Nu autoload scripts)
 ```
 
 ### Key Files
@@ -90,8 +91,9 @@ chezmoi init --apply
 | File | Purpose |
 |------|---------|
 | `.chezmoi.toml.tmpl` | Prompts for name/email, configures nu interpreter |
+| `.chezmoiignore.tmpl` | Ignores OS-specific files (Linux vs Windows targets) |
 | `.chezmoiscripts/run_before_*.nu` | Pre-apply setup (directories) |
-| `.chezmoiscripts/run_onchange_*.nu.tmpl` | Post-apply actions (mise install) |
+| `.chezmoiscripts/run_onchange_*.nu.tmpl` | Post-apply actions (mise install, Nu autoload generation) |
 | `dot_config/mise/config.toml` | Tool versions managed by mise |
 
 ### Why Nushell Scripts?
@@ -99,20 +101,34 @@ chezmoi init --apply
 All chezmoi scripts use Nushell (`.nu`) instead of Bash/PowerShell because:
 - **Cross-platform**: Same syntax on Windows, macOS, and Linux
 - **Modern**: Structured data, better error handling
-- **No system dependency**: Nushell is provided by mise via `mise x nu --`
+- **No system dependency**: Nushell is provided by mise via `mise exec nu --`
 
 The interpreter configuration in `.chezmoi.toml.tmpl`:
 ```toml
 [interpreters.nu]
     command = "mise"
-    args = ["x", "aqua:nushell/nushell", "--"]
+    args = ["exec", "aqua:nushell/nushell", "--"]
 ```
 
 This means chezmoi runs `.nu` scripts through mise, which provides Nushell on-demand.
 
+### Git Requirement On Fresh Systems
+
+Bootstrap does not require preinstalled Git. `--use-builtin-git=on` forces chezmoi's builtin git for `init`.
+
+Install external Git if you need:
+- SSH-based git remotes
+- `git-repo` externals
+- direct git workflows outside chezmoi
+
+Optional bootstrap with external Git via conda-forge (through mise):
+```bash
+mise exec conda:git@latest chezmoi@latest -- chezmoi --use-builtin-git=auto init --apply rjallais
+```
+
 ## Alternative Installation
 
-If you prefer to install mise via a package manager (note: `mise self-update` won't work):
+If you prefer to install mise via a package manager:
 
 ### macOS
 ```bash
@@ -138,7 +154,7 @@ apk add mise
 
 Then run chezmoi separately:
 ```bash
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply rjallais
+mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
 ```
 
 ## Supported Systems
@@ -154,4 +170,5 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply rjallais
 
 - Edit `.chezmoi.toml.tmpl` to change prompted variables
 - Edit `dot_config/mise/config.toml` to change which tools are installed
-- Edit `dot_config/nushell/config.nu` for Nushell configuration
+- Edit `dot_config/nushell/config.nu` for Linux/macOS Nushell configuration
+- Edit `AppData/Roaming/nushell/config.nu` for Windows Nushell configuration

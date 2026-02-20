@@ -1,0 +1,16 @@
+# Files to ignore when applying dotfiles (not copied to ~)
+
+README.md
+LICENSE
+.git/
+.github/
+*.example
+{{- if eq .chezmoi.os "windows" }}
+dot_bash_profile
+dot_bashrc
+dot_profile
+dot_config/private_fish/
+dot_config/nushell/
+{{- else }}
+AppData/
+{{- end }}

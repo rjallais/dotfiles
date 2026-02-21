@@ -161,10 +161,12 @@ mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
 
 | Platform | Status |
 |----------|--------|
-| macOS (Intel/ARM) | ✅ Tested |
-| Linux (x64/ARM) | ✅ Tested |
+| Linux (x64) | ✅ Tested |
+| Linux (ARM64) | ⚠️ Expected to work, not tested |
 | Windows 10/11 (x64) | ✅ Tested |
-| Bazzite/Bluefin | ✅ Tested |
+| Windows 11 (ARM64) | ⚠️ Expected to work, not tested |
+| macOS (Intel) | ⚠️ Expected to work, not tested |
+| macOS (Apple Silicon/ARM64) | ⚠️ Expected to work, not tested |
 
 ## Customization
 

@@ -25,6 +25,14 @@ if $home != null {
     path add ($home | path join ".local" "bin")
 }
 
+if $env.WSL_DISTRO_NAME? != null {
+    $env.PATH = (
+        $env.PATH
+        | where { |p| (not ($p | str contains "/AppData/Local/mise/shims")) and (not ($p | str contains "/scoop/apps/mise/current/bin")) and (not ($p | str contains "/AppData/Local/mise/installs")) }
+        | uniq
+    )
+}
+
 const mise_autoload = ($nu.data-dir | path join "vendor" "autoload" "mise.nu")
 const starship_autoload = ($nu.data-dir | path join "vendor" "autoload" "starship.nu")
 const zoxide_autoload = ($nu.data-dir | path join "vendor" "autoload" "zoxide.nu")

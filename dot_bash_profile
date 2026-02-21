@@ -8,7 +8,7 @@ fi
 # User specific environment and startup programs
 
 # Start fish shell for interactive sessions
-if [[ "$-" == *i*]] && [ -t 1 ]; then
+if [[ "$-" == *i* ]] && [ -t 1 ]; then
   # Parent process command name (best-effort)
   parent=$(ps -o comm= "$PPID" 2>/dev/null || true)
 
@@ -26,4 +26,3 @@ fi
 
 # Added by Toolbox App
 export PATH="$PATH:/home/rjallais/.local/share/JetBrains/Toolbox/scripts"
-

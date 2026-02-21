@@ -45,6 +45,31 @@ source $zoxide_autoload
 if ($atuin_autoload | path exists) { source $atuin_autoload }
 if ($carapace_autoload | path exists) { source $carapace_autoload }
 
+if $env.WSL_DISTRO_NAME? != null {
+    def --env normalize_wsl_mise_paths [] {
+        $env.PATH = (
+            $env.PATH
+            | where { |p| (not ($p | str contains "/AppData/Local/mise/shims")) and (not ($p | str contains "/scoop/apps/mise/current/bin")) and (not ($p | str contains "/AppData/Local/mise/installs")) }
+            | uniq
+        )
+        let local_home = $env.HOME? | default $env.USERPROFILE?
+        if $local_home != null {
+            path add ($local_home | path join ".local" "share" "mise" "shims")
+        }
+    }
+    normalize_wsl_mise_paths
+    $env.config = (
+        $env.config?
+        | default {}
+        | upsert hooks { default {} }
+        | upsert hooks.pre_prompt { default [] }
+    )
+    $env.config.hooks.pre_prompt = (
+        $env.config.hooks.pre_prompt
+        | append { code: { normalize_wsl_mise_paths } }
+    )
+}
+
 if $env.MISE_GITHUB_TOKEN? == null {
     if ((which gh | length) > 0) {
         let gh_token = (do -i { ^gh auth token } | default "" | str trim)

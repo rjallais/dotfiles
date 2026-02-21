@@ -41,7 +41,7 @@ const carapace_autoload = ($nu.data-dir | path join "vendor" "autoload" "carapac
 
 if ($mise_autoload | path exists) { source $mise_autoload }
 if ($starship_autoload | path exists) { source $starship_autoload }
-if ($zoxide_autoload | path exists) { source $zoxide_autoload }
+source $zoxide_autoload
 if ($atuin_autoload | path exists) { source $atuin_autoload }
 if ($carapace_autoload | path exists) { source $carapace_autoload }
 

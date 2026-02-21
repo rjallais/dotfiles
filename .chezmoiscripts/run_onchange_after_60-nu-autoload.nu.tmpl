@@ -13,4 +13,13 @@ mise exec zoxide -- zoxide init nushell | save -f ($autoload_dir | path join "zo
 mise exec atuin -- atuin init nu | save -f ($autoload_dir | path join "atuin.nu")
 mise exec carapace -- carapace _carapace nushell | save -f ($autoload_dir | path join "carapace.nu")
 
+let required = ["mise.nu" "starship.nu" "zoxide.nu" "atuin.nu" "carapace.nu"]
+for f in $required {
+    let p = ($autoload_dir | path join $f)
+    if not ($p | path exists) {
+        print $"ERROR: Failed to generate ($f) at ($p)"
+        exit 1
+    }
+}
+
 print "Nushell autoload scripts refreshed"

@@ -1,51 +1,63 @@
 [tools]
 atuin = "latest"
-"aqua:nushell/nushell" = "latest"
-"aqua:Wilfred/difftastic" = "latest"
-"aqua:charmbracelet/crush" = "latest"
 "aqua:exercism/cli" = "latest"
+"aqua:github/copilot-cli" = "latest"
 "aqua:iawia002/lux" = "latest"
-"aqua:microsoft/edit" = "1.2.0"
+"aqua:microsoft/edit" = "latest"
 "aqua:nats-io/natscli" = "latest"
+"aqua:nushell/nushell" = "latest"
+"aqua:peteretelej/tree" = "latest"
 "aqua:topgrade-rs/topgrade" = "latest"
 "aqua:twistedpair/google-cloud-sdk" = "latest"
 "aqua:zyedidia/micro" = "latest"
+"aqua:Wilfred/difftastic" = "latest"
 bat = "latest"
 bottom = "latest"
 bun = "latest"
+carapace = "latest"
+cargo-binstall = "latest"
 chezmoi = "latest"
 cmake = "latest"
 conan = "latest"
+crush = "latest"
+delta = "latest"
 dust = "latest"
 fastfetch = "latest"
 fd = "latest"
 fzf = "latest"
-github-cli = "latest"
+gemini = "latest"
+gh = "latest"
+"github:danielmiessler/fabric" = "latest"
+"github:xmake-io/xmake" = "latest"
 go = "latest"
 hyperfine = "latest"
-lsd = "latest"
 node = "latest"
-"npm:@github/copilot" = "latest"
-"npm:@google/gemini-cli" = "latest"
+"npm:@jetbrains/junie-cli" = "latest"
+"npm:@kilocode/cli" = "latest"
+"npm:@sourcegraph/amp" = "latest"
+odin = "latest"
+opencode = "latest"
+"pipx:tldr" = "latest"
+python = "latest"
 ripgrep = "latest"
 sd = "latest"
 sqlite = "latest"
 starship = "latest"
-"github:danielmiessler/fabric" = "latest"
-"github:xmake-io/xmake" = "latest"
 usage = "latest"
 uv = "latest"
 yt-dlp = "latest"
 zoxide = "latest"
-delta = "latest"
-carapace = "latest"
 
 [settings]
 experimental = true
 idiomatic_version_file_enable_tools = []
 
+[settings.cargo]
+binstall = true
+  
 [settings.npm]
 bun = true
+package_manager = "bun"
 
 [settings.python]
 compile = false

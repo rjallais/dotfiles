@@ -16,6 +16,7 @@ cargo-binstall = "latest"
 chezmoi = "latest"
 codex = "latest"
 "conda:clang" = "latest"
+"conda:ugrep" = { version = "latest", os = ["linux", "macos"] }
 crush = "latest"
 delta = "latest"
 dust = "latest"
@@ -24,7 +25,7 @@ fd = "latest"
 fzf = "latest"
 gemini = "latest"
 gh = "latest"
-"github:Genivia/ugrep" = "latest"
+"github:Genivia/ugrep" = { version = "latest", os = ["windows"] }
 "github:pkgxdev/pkgx" = "latest"
 "github:xmake-io/xmake" = "latest"
 glow = "latest"
@@ -51,6 +52,7 @@ zoxide = "latest"
 [settings]
 experimental = true
 idiomatic_version_file_enable_tools = []
+quiet = true
 
 [settings.cargo]
 binstall = true

@@ -1,14 +1,11 @@
 [tools]
-atuin = "latest"
 "aqua:exercism/cli" = "latest"
 "aqua:github/copilot-cli" = "latest"
 "aqua:iawia002/lux" = "latest"
-"aqua:microsoft/edit" = "latest"
 "aqua:nats-io/natscli" = "latest"
-"aqua:nushell/nushell" = "latest"
 "aqua:peteretelej/tree" = "latest"
 "aqua:topgrade-rs/topgrade" = "latest"
-"aqua:twistedpair/google-cloud-sdk" = "latest"
+"aqua:uutils/coreutils" = "latest"
 "aqua:zyedidia/micro" = "latest"
 "aqua:Wilfred/difftastic" = "latest"
 bat = "latest"
@@ -17,8 +14,8 @@ bun = "latest"
 carapace = "latest"
 cargo-binstall = "latest"
 chezmoi = "latest"
-cmake = "latest"
-conan = "latest"
+codex = "latest"
+"conda:clang" = "latest"
 crush = "latest"
 delta = "latest"
 dust = "latest"
@@ -27,8 +24,10 @@ fd = "latest"
 fzf = "latest"
 gemini = "latest"
 gh = "latest"
-"github:danielmiessler/fabric" = "latest"
+"github:Genivia/ugrep" = "latest"
+"github:pkgxdev/pkgx" = "latest"
 "github:xmake-io/xmake" = "latest"
+glow = "latest"
 go = "latest"
 hyperfine = "latest"
 node = "latest"
@@ -38,6 +37,7 @@ node = "latest"
 odin = "latest"
 opencode = "latest"
 "pipx:tldr" = "latest"
+pnpm = "latest"
 python = "latest"
 ripgrep = "latest"
 sd = "latest"
@@ -54,10 +54,9 @@ idiomatic_version_file_enable_tools = []
 
 [settings.cargo]
 binstall = true
-  
+
 [settings.npm]
-bun = true
-package_manager = "bun"
+package_manager = "pnpm"
 
 [settings.python]
 compile = false

@@ -12,6 +12,7 @@
     editor = micro
     pager = delta
     autocrlf = input
+    askpass = true
 
 [init]
     defaultBranch = main
@@ -49,3 +50,19 @@
 
 [diff]
     colorMoved = default
+
+[credential]
+    helper = cache --timeout=3600
+
+[protocol "https"]
+    allow = always
+
+[url "https://gitlab.com/"]
+    insteadOf = git@gitlab.com:
+
+[url "https://bitbucket.org/"]
+    insteadOf = git@bitbucket.org:
+
+[url "https://"]
+    insteadOf = http://
+

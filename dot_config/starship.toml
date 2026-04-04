@@ -1,5 +1,94 @@
+# Get editor completions based on the config schema
+"$schema" = 'https://starship.rs/config-schema.json'
+
+palette = "catppuccin_mocha"
+
+# Move container info to the first line
+format = """$container${custom.container}\n\
+            $username\
+            $hostname\
+            $localip\
+            $shlvl\
+            $singularity\
+            $kubernetes\
+            $directory\
+            $vcsh\
+            $fossil_branch\
+            $git_branch\
+            $git_commit\
+            $git_state\
+            $git_metrics\
+            $git_status\
+            $hg_branch\
+            $pijul_channel\
+            $docker_context\
+            $package\
+            $c\
+            $cmake\
+            $cobol\
+            $daml\
+            $dart\
+            $deno\
+            $dotnet\
+            $elixir\
+            $elm\
+            $erlang\
+            $fennel\
+            $golang\
+            $guix_shell\
+            $haskell\
+            ${custom.haskell}\
+            $all""" # ^^^ Add custom haskell GHC version command
+
+[directory.substitutions]
+'/var/home/rjallais' = '~'
+
+[container]
+format = '[$symbol ]($style)'
+
+[custom.container]
+description = 'Get container name'
+command = "sh -lc 'bat /run/.containerenv | rg -i name | cut -d \"\\\"\" -f2'"
+when = "sh -lc '[ -f /run/.containerenv ]'"
+style = 'bold red dimmed'
+format = '[\[$output\]]($style)'
+
 [pixi]
 disabled = true
 
 [gcloud]
 disabled = true
+
+[jobs]
+disabled = true
+# number_threshold = 2
+# symbol_threshold = 3
+# format = '[$symbol$number]($style) '
+
+[palettes.catppuccin_mocha]
+base = "#1e1e2e"
+blue = "#89b4fa"
+crust = "#11111b"
+flamingo = "#f2cdcd"
+green = "#a6e3a1"
+lavender = "#b4befe"
+mantle = "#181825"
+maroon = "#eba0ac"
+mauve = "#cba6f7"
+overlay0 = "#6c7086"
+overlay1 = "#7f849c"
+overlay2 = "#9399b2"
+peach = "#fab387"
+pink = "#f5c2e7"
+red = "#f38ba8"
+rosewater = "#f5e0dc"
+sapphire = "#74c7ec"
+sky = "#89dceb"
+subtext0 = "#a6adc8"
+subtext1 = "#bac2de"
+surface0 = "#313244"
+surface1 = "#45475a"
+surface2 = "#585b70"
+teal = "#94e2d5"
+text = "#cdd6f4"
+yellow = "#f9e2af"

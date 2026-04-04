@@ -58,11 +58,8 @@ PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 
 # Load mise
 if command -v mise &> /dev/null; then
-    # Only activate mise when running an interactive bash session
-    case "$-" in
-        *i*) export SHELL_TYPE=bash; eval "$(mise activate bash)";;
-        *) ;;
-    esac
+    export SHELL_TYPE=bash
+    eval "$(mise activate bash)"
 fi
 
 # enable the starship prompt
@@ -70,3 +67,18 @@ if command -v starship >/dev/null; then
   eval "$(starship init bash)"
 fi
 
+# Add mise shims to PATH (idempotent)
+_mise_shims_dir="$HOME/.local/share/mise/shims"
+case ":$PATH:" in
+  *":$_mise_shims_dir:") :;;
+  *)
+    if [ -d "$_mise_shims_dir" ]; then
+      export PATH="$_mise_shims_dir:$PATH"
+    fi
+    ;;
+esac
+
+# Load Rust environment only when installed.
+if [ -f "$HOME/.cargo/env" ]; then
+  . "$HOME/.cargo/env"
+fi

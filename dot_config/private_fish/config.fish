@@ -7,7 +7,9 @@ fish_add_path /usr/local/cuda-12.9/bin
 # Use set -gx to prepend and export LD_LIBRARY_PATH
 set -gx LD_LIBRARY_PATH /usr/local/cuda-12.9/lib64 $LD_LIBRARY_PATH
 
-mise activate fish | source
+if command -q mise
+  mise activate fish | source
+end
 
 # Initialize starship if it's installed (version-independent)
 if command -q starship
@@ -16,6 +18,10 @@ end
 
 # 2) Only in interactive sessions…
 if status is-interactive
+    # Initialize atuin if it's installed
+    if command -q atuin
+        atuin init fish | source
+    end
     # Commands to run in interactive sessions can go here
     set -Ux EGET_BIN $HOME/.local/bin
     set -Ux fish_user_paths $EGET_BIN $fish_user_paths
@@ -29,11 +35,15 @@ if status is-interactive
 
     # Ensure XDG_CONFIG_HOME falls back to ~/.config
     set -l config_home $XDG_CONFIG_HOME; or set config_home $HOME/.config
-    
+
     # Export AQUA_GLOBAL_CONFIG (use existing value or empty, then append the default path)
     set -x AQUA_GLOBAL_CONFIG "$AQUA_GLOBAL_CONFIG:$config_home/aquaproj-aqua/aqua.yaml"
 
     # set -Ux fish_user_paths $HOME/.local/share/aquaproj-aqua/bin $fish_user_paths
+
+    if command -q zoxide
+        zoxide init fish | source
+    end
 end
 
 # >>> mamba initialize >>>
@@ -48,7 +58,11 @@ end
 
 # add ~/.pixi/bin to your PATH if it isn’t already there
 fish_add_path $HOME/.pixi/bin
-pixi completion --shell fish | source
+
+# Initialize pixi completion if it's installed
+if command -q pixi
+    pixi completion --shell fish | source
+end
 
 set -l unique_paths
 for path_item in $PATH

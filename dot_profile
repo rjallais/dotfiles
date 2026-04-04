@@ -24,7 +24,10 @@ export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/
 
 # Load mise if available
 if command -v mise > /dev/null 2>&1; then
-    # Ensure mise sees the correct shell type when invoked from POSIX shells
     export SHELL_TYPE=bash
-    eval "$(mise activate bash)"
+    eval "$(mise activate bash --shims)"
+fi
+
+if [ -f "$HOME/.cargo/env" ]; then
+    . "$HOME/.cargo/env"
 fi

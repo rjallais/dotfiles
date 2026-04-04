@@ -1,5 +1,26 @@
 # .bash_profile
 
+# Add mise shims to PATH - works in both bash and for IDEs
+_mise_shims_dir="$HOME/.local/share/mise/shims"
+if [ -d "$_mise_shims_dir" ]; then
+  case ":$PATH:" in
+    *":$_mise_shims_dir:"*) :;; # Already in PATH
+    *)
+      export PATH="$_mise_shims_dir:$PATH"
+      ;;
+  esac
+fi
+
+# Set Node.js environment variables for IDE extensions
+if command -v mise >/dev/null 2>&1; then
+  NODE_HOME="$(mise where node 2>/dev/null || true)"
+  if [ -n "$NODE_HOME" ]; then
+    export NODE_HOME
+    export NODE_PATH="$NODE_HOME/lib/node_modules"
+    export PATH="$NODE_HOME/bin:$PATH"
+  fi
+fi
+
 # Get the aliases and functions
 if [ -f ~/.bashrc ]; then
     . ~/.bashrc
@@ -17,12 +38,65 @@ if [[ "$-" == *i* ]] && [ -t 1 ]; then
       # Don't replace shell when launched by JetBrains temporary helpers or similar
       ;;
     *)
-      # Replace bash with a login fish for normal interactive terminals
-      exec /usr/sbin/fish -l
+      # Replace bash with a login fish for normal interactive terminals if fish exists
+      fish_bin="$(command -v fish 2>/dev/null || true)"
+      if [ -n "$fish_bin" ]; then
+        exec "$fish_bin" -l
+      fi
       ;;
   esac
 fi
 
-
 # Added by Toolbox App
 export PATH="$PATH:/home/rjallais/.local/share/JetBrains/Toolbox/scripts"
+# >>> zerobrew >>>
+# zerobrew
+export ZEROBREW_DIR="$HOME/.zerobrew"
+export ZEROBREW_BIN="$HOME/.zerobrew/bin"
+export ZEROBREW_ROOT="$HOME/.local/share/zerobrew"
+export ZEROBREW_PREFIX="$HOME/.local/share/zerobrew/prefix"
+export PKG_CONFIG_PATH="$ZEROBREW_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+
+# SSL/TLS certificates (only if ca-certificates is installed)
+if [ -z "${CURL_CA_BUNDLE:-}" ] || [ -z "${SSL_CERT_FILE:-}" ]; then
+  if [ -f "$ZEROBREW_PREFIX/opt/ca-certificates/share/ca-certificates/cacert.pem" ]; then
+    [ -z "${CURL_CA_BUNDLE:-}" ] && export CURL_CA_BUNDLE="$ZEROBREW_PREFIX/opt/ca-certificates/share/ca-certificates/cacert.pem"
+    [ -z "${SSL_CERT_FILE:-}" ] && export SSL_CERT_FILE="$ZEROBREW_PREFIX/opt/ca-certificates/share/ca-certificates/cacert.pem"
+  elif [ -f "$ZEROBREW_PREFIX/etc/ca-certificates/cacert.pem" ]; then
+    [ -z "${CURL_CA_BUNDLE:-}" ] && export CURL_CA_BUNDLE="$ZEROBREW_PREFIX/etc/ca-certificates/cacert.pem"
+    [ -z "${SSL_CERT_FILE:-}" ] && export SSL_CERT_FILE="$ZEROBREW_PREFIX/etc/ca-certificates/cacert.pem"
+  elif [ -f "$ZEROBREW_PREFIX/etc/openssl/cert.pem" ]; then
+    [ -z "${CURL_CA_BUNDLE:-}" ] && export CURL_CA_BUNDLE="$ZEROBREW_PREFIX/etc/openssl/cert.pem"
+    [ -z "${SSL_CERT_FILE:-}" ] && export SSL_CERT_FILE="$ZEROBREW_PREFIX/etc/openssl/cert.pem"
+  elif [ -f "$ZEROBREW_PREFIX/share/ca-certificates/cacert.pem" ]; then
+    [ -z "${CURL_CA_BUNDLE:-}" ] && export CURL_CA_BUNDLE="$ZEROBREW_PREFIX/share/ca-certificates/cacert.pem"
+    [ -z "${SSL_CERT_FILE:-}" ] && export SSL_CERT_FILE="$ZEROBREW_PREFIX/share/ca-certificates/cacert.pem"
+  fi
+fi
+
+if [ -z "${SSL_CERT_DIR:-}" ]; then
+  if [ -d "$ZEROBREW_PREFIX/etc/ca-certificates" ]; then
+    export SSL_CERT_DIR="$ZEROBREW_PREFIX/etc/ca-certificates"
+  elif [ -d "$ZEROBREW_PREFIX/etc/openssl/certs" ]; then
+    export SSL_CERT_DIR="$ZEROBREW_PREFIX/etc/openssl/certs"
+  elif [ -d "$ZEROBREW_PREFIX/share/ca-certificates" ]; then
+    export SSL_CERT_DIR="$ZEROBREW_PREFIX/share/ca-certificates"
+  fi
+fi
+
+# Helper function to safely append to PATH
+_zb_path_append() {
+    local argpath="$1"
+    case ":${PATH}:" in
+        *:"$argpath":*) ;;
+        *) export PATH="$argpath:$PATH" ;;
+    esac;
+}
+
+_zb_path_append "$ZEROBREW_BIN"
+_zb_path_append "$ZEROBREW_PREFIX/bin"
+
+# <<< zerobrew <<<
+if [ -f "$HOME/.cargo/env" ]; then
+  . "$HOME/.cargo/env"
+fi

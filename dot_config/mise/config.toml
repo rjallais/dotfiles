@@ -1,16 +1,16 @@
 [tools]
 aqua = "latest"
+
 "aqua:Wilfred/difftastic" = "latest"
 "aqua:block/goose" = "latest"
 "aqua:exercism/cli" = "latest"
 "aqua:iawia002/lux" = "latest"
 "aqua:microsoft/edit" = "1.2.1"
 "aqua:nats-io/natscli" = "latest"
-"aqua:nushell/nushell" = "latest"
-"aqua:sst/opencode" = "latest"
 "aqua:topgrade-rs/topgrade" = "latest"
 "aqua:twistedpair/google-cloud-sdk" = "latest"
 "aqua:zyedidia/micro" = "latest"
+
 atuin = "latest"
 bat = "latest"
 bitwarden = "latest"
@@ -19,7 +19,6 @@ bun = "latest"
 carapace = "latest"
 cargo-binstall = "latest"
 chezmoi = "latest"
-"npm:@anthropic-ai/claude-code" = "latest"
 cmake = "latest"
 codex = "latest"
 conan = "latest"
@@ -27,43 +26,68 @@ conan = "latest"
 cosign = "latest"
 delta = "latest"
 dust = "latest"
+eza = "latest"
 fastfetch = "latest"
 fd = "latest"
 fzf = "latest"
 github-cli = "latest"
+
 "github:AdguardTeam/AdGuardHome" = "latest"
-"github:Canop/dysk" = "latest"
+"github:JetBrains/junie" = "latest"
 "github:Valkyrie00/bold-brew" = "latest"
+"github:danielmiessler/fabric" = "latest"
+"github:abishekvashok/cmatrix" = "latest"
+"github:charmbracelet/crush" = "latest"
 "github:lucasgelfond/zerobrew" = "latest"
+"github:pkgforge/soar" = "latest"
+"github:plyght/wax" = { version = "latest", os = ["linux", "macos"] }
+"github:uutils/coreutils" = "latest"
+"github:uutils/diffutils" = "latest"
+"github:uutils/findutils" = "latest"
+"github:xmake-io/xmake" = "latest"
+
 go = "latest"
-"go:github.com/Gelio/go-global-update" = "latest"
+"go:github.com/hanthor/bluefin-cli" = "latest"
 "go:golang.org/x/tools/gopls" = "latest"
+gup = "latest"
 hyperfine = "latest"
 lsd = "latest"
 node = "latest"
+
+"npm:@anthropic-ai/claude-code" = "latest"
 "npm:@github/copilot" = "latest"
 "npm:@google/gemini-cli" = "latest"
 "npm:@kilocode/cli" = "latest"
+
+opencode = "latest"
+
+"pipx:tldr" = "latest"
+"pipx:trash-cli" = "latest"
+
+pnpm = "latest"
+qwen-code = "latest"
 ripgrep = "latest"
 rust = "latest"
 sd = "latest"
 sqlite = "latest"
 starship = "latest"
-"github:danielmiessler/fabric" = "latest"
-"github:xmake-io/xmake" = "latest"
+television = "latest"
 usage = "latest"
 uv = "latest"
 yt-dlp = "latest"
 zoxide = "latest"
-pnpm = "latest"
-"github:pkgforge/soar" = "latest"
-"pipx:tldr" = "latest"
-eza = "latest"
-"github:uutils/coreutils" = "latest"
-"github:uutils/diffutils" = "latest"
-"github:uutils/findutils" = "latest"
-"github:charmbracelet/crush" = "latest"
-"github:abishekvashok/cmatrix" = "latest"
+amp = "latest"
+
+"cargo:dysk" = { version = "latest", os = ["linux"] }
+"cargo:bacon" = { version = "latest", os = ["linux"] }
+"go:github.com/go-delve/delve/cmd/dlv" = { version = "latest", os = ["linux", "macos"] }
+
+"github:ajeetdsouza/zoxide" = { version = "latest", os = ["windows"] }
+"aqua:sharkdp/bat" = { version = "latest", os = ["windows"] }
+"aqua:BurntSushi/ripgrep" = { version = "latest", os = ["windows"] }
+"aqua:sharkdp/fd" = { version = "latest", os = ["windows"] }
+"aqua:starship/starship" = { version = "latest", os = ["windows"] }
+"aqua:carapace-shell/carapace-bin" = { version = "latest", os = ["windows"] }
 
 [settings]
 experimental = true
@@ -71,6 +95,9 @@ idiomatic_version_file_enable_tools = []
 
 [settings.npm]
 package_manager = "pnpm"
+
+[settings.cargo]
+binstall = true
 
 [settings.python]
 compile = false

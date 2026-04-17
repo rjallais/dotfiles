@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# DESCRIPTION: Sync system packages from lockfile (wax or winget)
+# MISE-DESCRIPTION: Sync system packages cross-platform
+
+set -e
+
+OS="$(uname -s)"
+
+if [[ "$OS" == "Linux" ]] || [[ "$OS" == "Darwin" ]]; then
+    echo "Syncing packages via wax..."
+    wax sync --file ~/.config/wax/Waxfile.toml
+    echo "System packages synced!"
+elif [[ "$OS" =~ ^(MINGW|MSYS|CYGWIN) ]] || [[ "$OS" == "Windows_NT" ]]; then
+    echo "Syncing packages via winget..."
+    winget upgrade --all --accept-source agreements --accept-package-agreements
+    echo "System packages synced!"
+else
+    echo "Unknown OS: $OS"
+    exit 1
+fi

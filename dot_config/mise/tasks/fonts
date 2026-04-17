@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# DESCRIPTION: Install fonts - cross-platform
+# MISE-DESCRIPTION: Install fonts cross-platform
+
+set -e
+
+OS="$(uname -s)"
+
+if [[ "$OS" == "Linux" ]] || [[ "$OS" == "Darwin" ]]; then
+    echo "Installing fonts via wax..."
+    wax cask font-jetbrains-mono-nerd-font font-fira-code-nerd-font font-caskaydia-mono-nerd-font
+    echo "Fonts installed successfully!"
+elif [[ "$OS" =~ ^(MINGW|MSYS|CYGWIN) ]] || [[ "$OS" == "Windows_NT" ]]; then
+    echo "Installing fonts on Windows via winget..."
+    winget install --id JetBrains.NerdFonts.JetBrainsMono -e --accept-source agreements --accept-package-agreements
+    echo "Fonts installed successfully!"
+else
+    echo "Unknown OS: $OS"
+    exit 1
+fi

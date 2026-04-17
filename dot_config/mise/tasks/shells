@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# DESCRIPTION: Install shells - nushell (user) + platform compat shell
+# MISE-DESCRIPTION: Install shells cross-platform
+
+set -e
+
+OS="$(uname -s)"
+
+if [[ "$OS" == "Linux" ]]; then
+    echo "Installing shells on Linux via wax..."
+    echo "  - nushell: user interaction shell"
+    echo "  - dash-shell: POSIX compatibility for external scripts"
+    wax install nushell dash-shell
+    echo "Linux shells installed successfully!"
+elif [[ "$OS" == "Darwin" ]]; then
+    echo "Installing shells on macOS via wax..."
+    echo "  - nushell: user interaction shell"
+    echo "  - dash-shell: POSIX compatibility for external scripts"
+    wax install nushell dash-shell
+    echo "macOS shells installed successfully!"
+elif [[ "$OS" =~ ^(MINGW|MSYS|CYGWIN) ]] || [[ "$OS" == "Windows_NT" ]]; then
+    echo "Installing shells on Windows via winget..."
+    echo "  - nushell: user interaction shell"
+    echo "  Note: PowerShell is built-in for script compatibility"
+    winget install --id Nushell.Nushell -e --accept-source agreements --accept-package-agreements
+    echo "Windows shells installed successfully!"
+else
+    echo "Unknown OS: $OS"
+    exit 1
+fi

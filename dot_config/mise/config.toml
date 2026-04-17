@@ -87,7 +87,7 @@ amp = "latest"
 "aqua:BurntSushi/ripgrep" = { version = "latest", os = ["windows"] }
 "aqua:sharkdp/fd" = { version = "latest", os = ["windows"] }
 "aqua:starship/starship" = { version = "latest", os = ["windows"] }
-"aqua:carapace-shell/carapace-bin" = { version = "latest", os = ["windows"] }
+"aqua:carapace-sh/carapace-bin" = { version = "latest", os = ["windows"] }
 
 [settings]
 experimental = true

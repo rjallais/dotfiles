@@ -70,7 +70,7 @@ if (sys host | get name) != "Windows" {
 if (sys host | get name) == "Windows" {
     $env.PNPM_HOME = $"($env.APPDATA)/pnpm"
 } else {
-    $env.PNPM_HOME = "{{ .Home }}/.local/share/pnpm"
+    $env.PNPM_HOME = "{{ .chezmoi.homeDir }}/.local/share/pnpm"
 }
 $env.PATH = ($env.PATH | split row (char esep) | prepend ($env.PNPM_HOME | path join "bin"))
 

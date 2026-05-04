@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Re-runs when mise or Nushell startup config changes
-# Hash: {{ include "dot_config/mise/config.toml" | sha256sum }}{{ include "dot_config/nushell/config.nu" | sha256sum }}{{ include "dot_config/nushell/env.nu" | sha256sum }}{{ include "AppData/Roaming/nushell/config.nu" | sha256sum }}{{ include "AppData/Roaming/nushell/env.nu" | sha256sum }}
+# Hash: {{ include "dot_config/mise/config.toml" | sha256sum }}{{ include "dot_config/nushell/config.nu.tmpl" | sha256sum }}{{ include "AppData/Roaming/nushell/config.nu" | sha256sum }}
 
 let autoload_dir = ($nu.data-dir | path join "vendor" "autoload")
 mkdir $autoload_dir

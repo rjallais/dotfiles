@@ -55,21 +55,33 @@ if $home != null {
 }
 normalize_wsl_mise_paths
 
-source $uutils_prefer
+if ($uutils_prefer | path exists) { source $uutils_prefer }
 
-# Homebrew/Linuxbrew performance optimizations
-$env.HOMEBREW_NO_ANALYTICS = 1       # no telemetry, faster commands
-$env.HOMEBREW_NO_AUTO_UPDATE = 1     # no auto-update on every brew install
-$env.HOMEBREW_NO_INSTALL_CLEANUP = "TRUE"  # skip cleanup after install (saves I/O on OSTree)
-$env.HOMEBREW_DEVELOPER = 1          # access --HEAD formulae, extra options
-$env.HOMEBREW_DOWNLOAD_CONCURRENCY = 16  # parallel downloads
+# Homebrew/Linuxbrew performance optimizations (Linux only)
+if (sys host | get name) != "Windows" {
+    $env.HOMEBREW_NO_ANALYTICS = 1       # no telemetry, faster commands
+    $env.HOMEBREW_NO_AUTO_UPDATE = 1     # no auto-update on every brew install
+    $env.HOMEBREW_NO_INSTALL_CLEANUP = "TRUE"  # skip cleanup after install (saves I/O on OSTree)
+    $env.HOMEBREW_DEVELOPER = 1          # access --HEAD formulae, extra options
+    $env.HOMEBREW_DOWNLOAD_CONCURRENCY = 16  # parallel downloads
+}
 
-$env.PNPM_HOME = "{{ .Home }}/.local/share/pnpm"
+# pnpm - use AppData on Windows, .local/share on Unix
+if (sys host | get name) == "Windows" {
+    $env.PNPM_HOME = $"($env.APPDATA)/pnpm"
+} else {
+    $env.PNPM_HOME = "{{ .Home }}/.local/share/pnpm"
+}
 $env.PATH = ($env.PATH | split row (char esep) | prepend ($env.PNPM_HOME | path join "bin"))
 
 def --env ensure_homebrew_path [] {
-    path add '/home/linuxbrew/.linuxbrew/bin'
-    path add '/home/linuxbrew/.linuxbrew/sbin'
+    if (sys host | get name) == "Windows" {
+        return
+    }
+    if ('/home/linuxbrew/.linuxbrew/bin' | path exists) {
+        path add '/home/linuxbrew/.linuxbrew/bin'
+        path add '/home/linuxbrew/.linuxbrew/sbin'
+    }
 }
 ensure_homebrew_path
 
@@ -137,6 +149,8 @@ $env.ANTHROPIC_VERTEX_PROJECT_ID = "gen-lang-client-0448119314"
 $env.GOOGLE_CLOUD_PROJECT = "gen-lang-client-0448119314"
 $env.GOOGLE_CLOUD_LOCATION = "global"
 
+# Linux-only: Fedora CoreOS system extension management
+# These functions require sudo, systemctl, and Linux paths
 def install-sysext-from [sysext: string, url: string] {
     let dir = $"/etc/sysupdate.($sysext).d"
     let conf = $"/($dir)/($sysext).conf"

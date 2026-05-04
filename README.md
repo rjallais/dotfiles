@@ -20,7 +20,7 @@ That's it! These one-liners:
 1. Download and install mise (with self-update capability)
 2. Run `chezmoi` through `mise exec` (alias: `mise x`) and auto-install it
 3. Clone this repository
-4. Prompt for your name and email
+4. Prompt for your name and default git email
 5. Apply all dotfiles
 6. Run `mise install` to install all development tools
 
@@ -90,7 +90,7 @@ mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply
 
 | File | Purpose |
 |------|---------|
-| `.chezmoi.toml.tmpl` | Prompts for name/email, configures nu interpreter |
+| `.chezmoi.toml.tmpl` | Prompts for name/default git email, configures nu interpreter |
 | `.chezmoiignore.tmpl` | Ignores OS-specific files (Linux vs Windows targets) |
 | `.chezmoiscripts/run_before_*.nu` | Pre-apply setup (directories) |
 | `.chezmoiscripts/run_onchange_*.nu.tmpl` | Post-apply actions (mise install, Nu autoload generation) |
@@ -171,6 +171,7 @@ mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
 ## Customization
 
 - Edit `.chezmoi.toml.tmpl` to change prompted variables
+- Edit `dot_gitconfig.github`, `dot_gitconfig.gitlab`, and `dot_gitconfig.codefloe` to change host-specific git identities
 - Edit `dot_config/mise/config.toml` to change which tools are installed
 - Edit `dot_config/nushell/config.nu` for Linux/macOS Nushell configuration
 - Edit `AppData/Roaming/nushell/config.nu` for Windows Nushell configuration

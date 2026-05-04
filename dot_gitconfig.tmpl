@@ -1,12 +1,23 @@
 # ~/.gitconfig - Git configuration
 
 [user]
-{{- if .email }}
-    email = {{ .email }}
+{{- if .git_email_default }}
+    email = {{ .git_email_default }}
 {{- end }}
 {{- if .name }}
     name = {{ .name }}
 {{- end }}
+    signingkey = ~/.ssh/id_ed25519_signing.pub
+    useconfigonly = true
+
+[includeIf "hasconfig:remote.*.url:**/*github.com/**"]
+    path = ~/.gitconfig.github
+
+[includeIf "hasconfig:remote.*.url:**/*gitlab.com/**"]
+    path = ~/.gitconfig.gitlab
+
+[includeIf "hasconfig:remote.*.url:**/*codefloe.com/**"]
+    path = ~/.gitconfig.codefloe
 
 [core]
     editor = micro
@@ -32,6 +43,7 @@
     co = checkout
     br = branch
     ci = commit
+    mterm = mergetool --tool=sdiff
     unstage = reset HEAD --
     last = log -1 HEAD
     visual = log --oneline --graph --decorate --all
@@ -46,7 +58,19 @@
     side-by-side = true
 
 [merge]
-    conflictstyle = diff3
+    tool = goland
+    conflictstyle = zdiff3
+
+[mergetool]
+    keepBackup = false
+
+[mergetool "goland"]
+    cmd = goland merge \"$LOCAL\" \"$REMOTE\" \"$BASE\" \"$MERGED\"
+    trustExitCode = true
+
+[mergetool "sdiff"]
+    cmd = "sdiff -o \"$MERGED\" \"$LOCAL\" \"$REMOTE\"; test $? -lt 2"
+    trustExitCode = true
 
 [diff]
     colorMoved = default
@@ -54,15 +78,14 @@
 [credential]
     helper = cache --timeout=3600
 
+[gpg]
+    format = ssh
+
+[commit]
+    gpgsign = true
+
 [protocol "https"]
     allow = always
 
-[url "https://gitlab.com/"]
-    insteadOf = git@gitlab.com:
-
-[url "https://bitbucket.org/"]
-    insteadOf = git@bitbucket.org:
-
 [url "https://"]
     insteadOf = http://
-

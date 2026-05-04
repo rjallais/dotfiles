@@ -2,8 +2,8 @@
 # This file will be processed as a template when chezmoi is initialized
 
 [data]
-    email = {{ promptStringOnce . "email" "Email address" | quote }}
     name = {{ promptStringOnce . "name" "Full name" | quote }}
+    git_email_default = {{ promptStringOnce . "git_email_default" "Default git email" | quote }}
 
 [edit]
     command = "micro"

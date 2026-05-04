@@ -2,8 +2,8 @@
 # Copy this to ~/.config/chezmoi/chezmoi.toml to customize
 
 [data]
-    email = "your.email@example.com"
     name = "Your Name"
+    git_email_default = "commits@example.com"
 
 [edit]
     command = "vim"
@@ -13,6 +13,7 @@
     pager = "delta"
     # Other options: "less", "more", "bat"
 
-# Example: Use different git email for work
-# [data.work]
-#     email = "work.email@company.com"
+# Per-host Git overrides live in:
+# - dot_gitconfig.github
+# - dot_gitconfig.gitlab
+# - dot_gitconfig.codefloe

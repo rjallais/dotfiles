@@ -1,0 +1,11 @@
+[misc]
+disable = ["go", "brew_formula", "brew_cask", "jetbrains_toolbox", "toolbx", "uv", "chezmoi", "antigravity", "cursor"]
+
+[containers]
+runtime = "podman"
+
+[commands]
+"Go binaries" = "gup"
+"Wax update index" = "wax update"
+"Wax upgrade formulae" = "wax upgrade -y"
+"Wax cleanup" = "wax cleanup -y"

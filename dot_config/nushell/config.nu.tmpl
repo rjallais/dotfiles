@@ -1,0 +1,191 @@
+# config.nu
+#
+# Installed by:
+# version = "0.108.0"
+#
+# This file is used to override default Nushell settings, define
+# (or import) custom commands, or run any other startup tasks.
+# See https://www.nushell.sh/book/configuration.html
+#
+# Nushell sets "sensible defaults" for most configuration settings,
+# so your `config.nu` only needs to override these defaults if desired.
+#
+# You can open this file in your default editor using:
+#     config nu
+#
+# You can also pretty-print and page through the documentation for configuration
+# options using:
+#     config nu --doc | nu-highlight | less -R
+#
+# Note: The env.nu/config.nu separation has been deprecated.
+# All configuration (including environment variables) should be in config.nu
+use std/util "path add"
+
+mkdir ($nu.data-dir | path join "vendor/autoload")
+
+const vendor_autoload = ($nu.data-dir | path join "vendor" "autoload")
+const mise_init = ($vendor_autoload | path join "mise.nu")
+const starship_init = ($vendor_autoload | path join "starship.nu")
+const zoxide_init = ($vendor_autoload | path join "zoxide.nu")
+const atuin_init = ($vendor_autoload | path join "atuin.nu")
+const carapace_init = ($vendor_autoload | path join "carapace.nu")
+const brew_init = ($vendor_autoload | path join "brew.nu")
+const uutils_prefer = ($nu.default-config-dir | path join "uutils-prefer.nu")
+
+def --env normalize_wsl_mise_paths [] {
+    if $env.WSL_DISTRO_NAME? == null {
+        return
+    }
+
+    $env.PATH = (
+        $env.PATH
+        | where { |p| (not ($p | str contains "/AppData/Local/mise/shims")) and (not ($p | str contains "/scoop/apps/mise/current/bin")) and (not ($p | str contains "/AppData/Local/mise/installs")) }
+        | uniq
+    )
+
+    let local_home = $env.HOME? | default $env.USERPROFILE?
+    if $local_home != null {
+        path add ($local_home | path join ".local" "share" "mise" "shims")
+    }
+}
+
+let home = $env.HOME? | default $env.USERPROFILE?
+if $home != null {
+    path add ($home | path join ".local" "bin")
+}
+normalize_wsl_mise_paths
+
+source $uutils_prefer
+
+# Homebrew/Linuxbrew performance optimizations
+$env.HOMEBREW_NO_ANALYTICS = 1       # no telemetry, faster commands
+$env.HOMEBREW_NO_AUTO_UPDATE = 1     # no auto-update on every brew install
+$env.HOMEBREW_NO_INSTALL_CLEANUP = "TRUE"  # skip cleanup after install (saves I/O on OSTree)
+$env.HOMEBREW_DEVELOPER = 1          # access --HEAD formulae, extra options
+$env.HOMEBREW_DOWNLOAD_CONCURRENCY = 16  # parallel downloads
+
+$env.PNPM_HOME = "{{ .Home }}/.local/share/pnpm"
+$env.PATH = ($env.PATH | split row (char esep) | prepend ($env.PNPM_HOME | path join "bin"))
+
+def --env ensure_homebrew_path [] {
+    path add '/home/linuxbrew/.linuxbrew/bin'
+    path add '/home/linuxbrew/.linuxbrew/sbin'
+}
+ensure_homebrew_path
+
+def --wrapped cat [...files: path]: [nothing -> string, any -> string] {
+    if ($files | is-empty) {
+        $in | to text
+    } else {
+        $files
+        | each { |file| open $file | to text }
+        | str join ""
+    }
+}
+
+source $mise_init
+source $starship_init
+source $zoxide_init
+source $atuin_init
+source $carapace_init
+source $brew_init
+ensure_homebrew_path
+
+$env.config = (
+    $env.config?
+    | default {}
+    | upsert hooks { default {} }
+    | upsert hooks.pre_prompt { default [] }
+)
+$env.config.hooks.pre_prompt = (
+    $env.config.hooks.pre_prompt
+    | append { code: { ensure_homebrew_path } }
+)
+
+if $env.WSL_DISTRO_NAME? != null {
+    $env.config = (
+        $env.config?
+        | default {}
+        | upsert hooks { default {} }
+        | upsert hooks.pre_prompt { default [] }
+    )
+    $env.config.hooks.pre_prompt = (
+        $env.config.hooks.pre_prompt
+        | append { code: { normalize_wsl_mise_paths } }
+    )
+}
+
+if $env.MISE_GITHUB_TOKEN? == null {
+    if ((which gh | length) > 0) {
+        let gh_auth = (^gh auth token | complete)
+        if $gh_auth.exit_code == 0 {
+            let gh_token = ($gh_auth.stdout | default "" | str trim)
+            if $gh_token != "" {
+                $env.MISE_GITHUB_TOKEN = $gh_token
+            }
+        }
+    }
+}
+
+# $env.ANTHROPIC_BASE_URL = ""
+# $env.ANTHROPIC_AUTH_TOKEN = ""
+# $env.ANTHROPIC_MODEL = ""
+$env.CLAUDE_CODE_USE_VERTEX = 1
+$env.CLOUD_ML_REGION = "global"
+$env.ANTHROPIC_VERTEX_PROJECT_ID = "gen-lang-client-0448119314"
+
+$env.GOOGLE_CLOUD_PROJECT = "gen-lang-client-0448119314"
+$env.GOOGLE_CLOUD_LOCATION = "global"
+
+def install-sysext-from [sysext: string, url: string] {
+    let dir = $"/etc/sysupdate.($sysext).d"
+    let conf = $"/($dir)/($sysext).conf"
+
+    ^sudo install -d -m 0755 -o 0 -g 0 $dir
+    ^sudo restorecon -RFv $dir
+    ^curl --silent --fail --location $"($url)/($sysext).conf" | ^sudo tee $conf | ignore
+    ^sudo /usr/lib/systemd/systemd-sysupdate update --component $sysext
+}
+
+def install-sysext [sysext: string] {
+    install-sysext-from $sysext "https://extensions.fcos.fr/fedora"
+}
+
+def install-sysext-community [sysext: string] {
+    install-sysext-from $sysext "https://extensions.fcos.fr/community"
+}
+
+def uninstall-sysext [sysext: string] {
+    let link = $"/var/lib/extensions/($sysext).raw"
+    let image_glob = $"/var/lib/extensions.d/($sysext)-*.raw"
+    let conf = $"/etc/sysupdate.($sysext).d/($sysext).conf"
+    let dir = $"/etc/sysupdate.($sysext).d"
+
+    ^sudo rm -i $link
+    glob $image_glob | each { |image| ^sudo rm -i $image }
+    ^sudo rm -i $conf
+    ^sudo rmdir $dir
+}
+
+def install-sysexts-manager [
+    version: string = "0.3.2"
+    version_id: string = "43"
+    arch: string = "x86-64"
+] {
+    let url = "https://github.com/travier/sysexts-manager/releases/download/sysexts-manager"
+    let name = $"sysexts-manager-($version)-($version_id)-($arch).raw"
+    let target = $"/var/lib/extensions.d/($name)"
+
+    ^sudo install -d -m 0755 -o 0 -g 0 /var/lib/extensions /var/lib/extensions.d /run/extensions
+    ^curl --silent --fail --location $"($url)/($name)" | ^sudo tee $target | ignore
+    ^sudo ln -snf $target /var/lib/extensions/sysexts-manager.raw
+    ^sudo restorecon -RFv /var/lib/extensions /var/lib/extensions.d /run/extensions
+    ^sudo systemctl enable systemd-sysext.service
+    ^sudo systemctl restart systemd-sysext.service
+}
+
+
+# Custom aliases or functions can go here
+# For example:
+# alias ls = lsd
+# alias cat = bat

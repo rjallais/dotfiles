@@ -32,6 +32,18 @@ const carapace_init = ($vendor_autoload | path join "carapace.nu")
 const brew_init = ($vendor_autoload | path join "brew.nu")
 const uutils_prefer = ($nu.default-config-dir | path join "uutils-prefer.nu")
 
+def --env ensure_mise_activation [] {
+    if ((which mise | length) == 0) {
+        return
+    }
+
+    if (not ($mise_init | path exists)) {
+        ^mise activate nu | save --force $mise_init
+    }
+
+    source $mise_init
+}
+
 def --env normalize_wsl_mise_paths [] {
     if $env.WSL_DISTRO_NAME? == null {
         return
@@ -52,6 +64,7 @@ def --env normalize_wsl_mise_paths [] {
 let home = $env.HOME? | default $env.USERPROFILE?
 if $home != null {
     path add ($home | path join ".local" "bin")
+    path add ($home | path join ".local" "share" "mise" "shims")
 }
 normalize_wsl_mise_paths
 
@@ -64,6 +77,8 @@ if (sys host | get name) != "Windows" {
     $env.HOMEBREW_NO_INSTALL_CLEANUP = "TRUE"  # skip cleanup after install (saves I/O on OSTree)
     $env.HOMEBREW_DEVELOPER = 1          # access --HEAD formulae, extra options
     $env.HOMEBREW_DOWNLOAD_CONCURRENCY = 16  # parallel downloads
+    $env.HOMEBREW_PREFIX = "/home/linuxbrew/.linuxbrew"
+    $env.HOMEBREW_CELLAR = "/home/linuxbrew/.linuxbrew/Cellar"
 }
 
 # pnpm - use AppData on Windows, .local/share on Unix
@@ -95,7 +110,7 @@ def --wrapped cat [...files: path]: [nothing -> string, any -> string] {
     }
 }
 
-source $mise_init
+ensure_mise_activation
 source $starship_init
 source $zoxide_init
 source $atuin_init

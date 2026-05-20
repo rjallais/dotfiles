@@ -1,5 +1,5 @@
 [misc]
-disable = ["go", "brew_formula", "brew_cask", "jetbrains_toolbox", "toolbx", "uv", "chezmoi", "antigravity", "cursor"]
+disable = ["go", "brew_formula", "brew_cask", "jetbrains_toolbox", "toolbx", "uv", "chezmoi", "antigravity", "cursor", "waydroid"]
 
 [containers]
 runtime = "podman"
@@ -9,3 +9,15 @@ runtime = "podman"
 "Wax update index" = "wax update"
 "Wax upgrade formulae" = "wax upgrade -y"
 "Wax cleanup" = "wax cleanup -y"
+
+[post_commands]
+"Clean Go cache" = "go clean -cache -modcache"
+"Clean npm cache" = "npm cache clean --force"
+"Clean pnpm store" = "pnpm store prune"
+"Clean bun cache" = "bun pm cache rm"
+"Clean uv cache" = "uv cache clean"
+"Clean mise cache" = "mise cache clear"
+"Prune podman" = "podman system prune -f"
+"Clean JetBrains cache" = "rm -rf ~/.cache/JetBrains"
+"Clean go build cache" = "rm -rf ~/.cache/go-build"
+"Trim journal logs" = "sudo journalctl --vacuum-size=100M"

@@ -1,11 +1,11 @@
 [tools]
+"http:antigravity" = { version = "latest", url = "https://storage.googleapis.com/antigravity-public/antigravity-cli/{{ version }}-5288553236791296/{{os(linux='linux', macos='darwin')}}-{{arch(x64='x64', arm64='arm')}}/cli_{{os(linux='linux', macos='mac')}}_{{arch(x64='x64', arm64='arm64')}}.tar.gz", version_list_url = "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_amd64.json", version_json_path = ".version" }
 aqua = "latest"
 
 "aqua:Wilfred/difftastic" = "latest"
-"aqua:block/goose" = "latest"
 "aqua:exercism/cli" = "latest"
 "aqua:iawia002/lux" = "latest"
-"aqua:microsoft/edit" = "1.2.1"
+"aqua:microsoft/edit" = "2.0.0"
 "aqua:nats-io/natscli" = "latest"
 "aqua:topgrade-rs/topgrade" = "latest"
 "aqua:twistedpair/google-cloud-sdk" = "latest"
@@ -58,6 +58,7 @@ node = "latest"
 "npm:@github/copilot" = "latest"
 "npm:@google/gemini-cli" = "latest"
 "npm:@kilocode/cli" = "latest"
+"github:Kilo-Org/kilocode" = "latest"
 
 opencode = "latest"
 
@@ -88,6 +89,12 @@ amp = "latest"
 "aqua:sharkdp/fd" = { version = "latest", os = ["windows"] }
 "aqua:starship/starship" = { version = "latest", os = ["windows"] }
 "aqua:carapace-sh/carapace-bin" = { version = "latest", os = ["windows"] }
+aube = "latest"
+rclone = "latest"
+"cargo:kombrucha" = "0.2.3"
+"aqua:jetify-com/devbox" = "latest"
+"github:aaif-goose/goose" = "latest"
+copilot = "latest"
 
 [settings]
 experimental = true

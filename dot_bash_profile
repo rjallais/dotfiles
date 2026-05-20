@@ -21,6 +21,13 @@ if command -v mise >/dev/null 2>&1; then
   fi
 fi
 
+# Source Gemini environment variables
+if [ -f "$HOME/.gemini/.env" ]; then
+    set -a
+    . "$HOME/.gemini/.env"
+    set +a
+fi
+
 # Get the aliases and functions
 if [ -f ~/.bashrc ]; then
     . ~/.bashrc

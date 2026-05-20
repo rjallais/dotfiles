@@ -78,6 +78,8 @@ uv = "latest"
 yt-dlp = "latest"
 zoxide = "latest"
 amp = "latest"
+cursor = "latest"
+
 
 "cargo:dysk" = { version = "latest", os = ["linux"] }
 "cargo:bacon" = { version = "latest", os = ["linux"] }

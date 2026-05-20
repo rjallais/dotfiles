@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Query the Cursor download API to get the AppImage URL
+DOWNLOAD_INFO=$(curl -s "https://cursor.com/api/download?platform=linux-x64&releaseTrack=stable")
+DOWNLOAD_URL=$(echo "$DOWNLOAD_INFO" | jq -r .downloadUrl)
+
+if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
+    echo "Failed to get Cursor download URL" >&2
+    exit 1
+fi
+
+echo "Downloading Cursor AppImage from $DOWNLOAD_URL..."
+mkdir -p "$ASDF_DOWNLOAD_PATH"
+curl -o "$ASDF_DOWNLOAD_PATH/cursor" -L "$DOWNLOAD_URL"
+chmod +x "$ASDF_DOWNLOAD_PATH/cursor"

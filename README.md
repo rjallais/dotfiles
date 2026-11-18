@@ -1,55 +1,72 @@
-# Dotfiles
+# Dotfiles (Mise Bootstrap)
 
-Cross-platform dotfiles using [Chezmoi](https://www.chezmoi.io/), [Mise](https://mise.jdx.dev/), and [fnox](https://fnox.jdx.dev/) across **Bazzite / Fedora Atomic Linux**, **Windows**, and **WSL**. Bootstrap scripts are written in [Nushell](https://www.nushell.sh/).
+Cross-platform workstation and dotfiles setup powered solely by [Mise](https://mise.jdx.dev/) (`mise bootstrap` + `mise dotfiles`) and [fnox](https://fnox.jdx.dev/) across **Bazzite / Fedora Atomic Linux**, **Windows**, and **WSL**.
 
 ## Quick Start
 
-### macOS / Linux
+### Preview / Dry Run (Recommended First)
 
 ```bash
-curl https://mise.run | sh && ~/.local/bin/mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
+# On an existing checkout at ~/dotfiles:
+MISE_CONFIG_DIR="$PWD/.config/mise" mise bootstrap --dry-run --skip-dirty
+MISE_CONFIG_DIR="$PWD/.config/mise" mise bootstrap plan
+MISE_CONFIG_DIR="$PWD/.config/mise" mise dot diff
 ```
 
-Optional Homebrew bundle restore on Linux/macOS:
+### Fresh Machine Bootstrap
+
+#### Linux / macOS
 
 ```bash
-brew bundle --file ~/dotfiles/Brewfile
+curl https://mise.run | sh && ~/.local/bin/mise bootstrap \
+  --from https://github.com/rjallais/dotfiles.git \
+  --from-dir ~/dotfiles \
+  --config-dir .config/mise \
+  --prompt-vars \
+  --skip-dirty
 ```
 
-### Windows (PowerShell)
+#### Windows (PowerShell)
 
 ```powershell
 $v = (irm https://api.github.com/repos/jdx/mise/releases/latest).tag_name
-$arch = "x64"
-irm "https://github.com/jdx/mise/releases/download/$v/mise-$v-windows-$arch.zip" -OutFile "$env:TEMP\mise.zip"
+irm "https://github.com/jdx/mise/releases/download/$v/mise-$v-windows-x64.zip" -OutFile "$env:TEMP\mise.zip"
 Expand-Archive "$env:TEMP\mise.zip" -Dest "$env:LOCALAPPDATA\mise" -Force
-$env:Path = "$env:LOCALAPPDATA\mise;$env:Path"
-& "$env:LOCALAPPDATA\mise\mise.exe" exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
+& "$env:LOCALAPPDATA\mise\mise.exe" bootstrap `
+  --from https://github.com/rjallais/dotfiles.git `
+  --from-dir "$HOME\dotfiles" `
+  --config-dir .config/mise `
+  --prompt-vars `
+  --skip-dirty
 ```
 
-## What Is Managed
+> **Windows Note:** `mise dotfiles` uses symlinks on Unix (`dotfiles.default_mode = "symlink"`), and automatically falls back to copying on Windows unless Developer Mode is enabled (`dotfiles.windows_symlinks = true`).
 
-### Shells & Core Configs
-- **Nushell**: `~/.config/nushell/{config.nu,env.nu,uutils-prefer.nu}` on Unix, `%APPDATA%\nushell\{config.nu,env.nu}` on Windows
-- **Fish**: `~/.config/fish/config.fish`, `conf.d/{brew,github-token,rustup}.fish`, `fish_plugins`
-- **Bash / POSIX**: `~/.bashrc`, `~/.profile` (with `~/.bash_profile` intentionally omitted so `.profile` is sourced cleanly)
-- **Git**: `~/.gitconfig`, `~/.gitconfig.{github,gitlab,codefloe}`, `~/.config/git/ignore`
-- **Prompt & Updates**: `~/.config/starship.toml`, `~/.config/topgrade.toml`
+## Layout
 
-### Workstation & Desktop Configs (Linux)
-- **Terminals & Editors**: Ghostty (`~/.config/ghostty/`), Zed (`~/.config/zed/settings.json`), Micro (`~/.config/micro/`), Delta (`~/.config/delta/settings.json`), Television (`~/.config/television/config.toml`)
-- **Bazzite / Bluefin / System**: `bluefin-cli`, `brew.env`, `environment.d/*`, portable `systemd/user/` units (`syncthing.service`, `zen-filter.service`), curated `Brewfile`, and reference sysext manifests under `system/etc/`
+| Path | Purpose |
+|---|---|
+| `.config/mise/miserc.toml` | Enables `auto_env = true` so OS overlays (`unix`, `linux`, `windows`) load automatically |
+| `.config/mise/config.toml` | Shared `[vars]`, `[tools]`, `[settings]`, cross-platform `[dotfiles]`, and `nu-autoload` task |
+| `.config/mise/config.unix.toml` | Unix shell configs, `[bootstrap.repos]` (`argc-completions`), Zsh activation, `post-tools` hook |
+| `.config/mise/config.linux.toml` | Linux desktop configs, `/etc/sysexts-manager` files (`[bootstrap.files]`), Homebrew formulae/casks, Flatpaks |
+| `.config/mise/config.windows.toml` | Windows `AppData/Roaming/nushell` dotfiles and `winget` packages |
+| `.config/mise/scripts/nu-autoload.nu` | Generates `$nu.data-dir/vendor/autoload/*.nu` integrations |
+| `dotfiles/` | Managed dotfile sources (plain paths + `.gitconfig.tera`) |
+| `system/` | System-level configuration files managed via `[bootstrap.files]` |
+| `Brewfile` | Reference Homebrew bundle (mirrors `[bootstrap.packages]` in `config.linux.toml`) |
 
-### Tools & Secrets
-- **Mise (`~/.config/mise/config.toml`)**: Global CLI tools, language toolchains, and AI CLIs
-- **Secrets (`~/.config/fnox/config.toml`)**: Encrypted with `age` (`[providers.age]`). Private key (`~/.config/fnox/age.txt`) is **never** committed; shells export encrypted secrets only when an `age` identity is present locally.
+## Secrets (`fnox` + `age`)
+
+Encrypted secrets live in `dotfiles/.config/fnox/config.toml` (ciphertext only). Your private key (`~/.config/fnox/age.txt`) stays outside the repository; shell startup files load encrypted variables only when `fnox` and an `age` identity are present.
 
 ## Daily Usage
 
 ```bash
-chezmoi status          # Inspect drift against live $HOME
-chezmoi diff            # Preview differences
-chezmoi apply           # Apply tracked changes
-mise install            # Install/sync global mise tools
-fnox -c ~/.config/fnox/config.toml check   # Verify age secret decryption
+mise bootstrap --update --skip-dirty   # Pull latest repo updates & apply everything
+mise bootstrap status                  # Check status of packages, files, repos, tools
+mise dot diff                          # Preview dotfile symlink/template diffs
+mise dot apply                         # Deploy dotfiles
+mise install                           # Sync Mise tools
+mise run brew-ublue                    # Install ublue-os/tap casks (custom cask DSL)
 ```

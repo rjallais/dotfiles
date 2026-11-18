@@ -1,0 +1,197 @@
+# Linux (Bazzite / Fedora Atomic) Mise bootstrap configuration
+
+[dotfiles]
+"~/.config/ghostty/config" = { source = "../../dotfiles/.config/ghostty/config" }
+"~/.config/ghostty/config.ghostty" = { source = "../../dotfiles/.config/ghostty/config.ghostty" }
+"~/.config/zed/settings.json" = { source = "../../dotfiles/.config/zed/settings.json" }
+"~/.config/bluefin-cli/config.yaml" = { source = "../../dotfiles/.config/bluefin-cli/config.yaml" }
+"~/.config/bluefin-cli/shell.json" = { source = "../../dotfiles/.config/bluefin-cli/shell.json" }
+"~/.config/brew.env" = { source = "../../dotfiles/.config/brew.env" }
+"~/.config/environment.d/10-local-bin.conf" = { source = "../../dotfiles/.config/environment.d/10-local-bin.conf" }
+"~/.config/environment.d/blur-my-shell.conf" = { source = "../../dotfiles/.config/environment.d/blur-my-shell.conf" }
+"~/.config/environment.d/intel-gtk-fix.conf" = { source = "../../dotfiles/.config/environment.d/intel-gtk-fix.conf" }
+"~/.config/systemd/user/syncthing.service" = { source = "../../dotfiles/.config/systemd/user/syncthing.service" }
+"~/.config/systemd/user/syncthing.service.d/override-exec.conf" = { source = "../../dotfiles/.config/systemd/user/syncthing.service.d/override-exec.conf" }
+"~/.config/systemd/user/syncthing.service.d/restart.conf" = { source = "../../dotfiles/.config/systemd/user/syncthing.service.d/restart.conf" }
+"~/.config/systemd/user/zen-filter.service" = { source = "../../dotfiles/.config/systemd/user/zen-filter.service" }
+
+[bootstrap.files."/etc/sysexts-manager/google-chrome.conf"]
+source = "../../system/etc/sysexts-manager/google-chrome.conf"
+owner = "root"
+group = "root"
+mode = "0644"
+
+[bootstrap.files."/etc/sysexts-manager/incus.conf"]
+source = "../../system/etc/sysexts-manager/incus.conf"
+owner = "root"
+group = "root"
+mode = "0644"
+
+[bootstrap.files."/etc/sysexts-manager/netbird.conf"]
+source = "../../system/etc/sysexts-manager/netbird.conf"
+owner = "root"
+group = "root"
+mode = "0644"
+
+[bootstrap.files."/etc/sysupdate.docker-ce.d/docker-ce.conf"]
+source = "../../system/etc/sysupdate.docker-ce.d/docker-ce.conf"
+owner = "root"
+group = "root"
+mode = "0644"
+
+[bootstrap.brew.taps]
+"hashicorp/tap" = "https://github.com/hashicorp/homebrew-tap.git"
+"ublue-os/tap" = "https://github.com/ublue-os/homebrew-tap.git"
+"ublue-os/experimental-tap" = "https://github.com/ublue-os/homebrew-experimental-tap.git"
+
+[bootstrap.packages]
+# Homebrew explicit leaf formulae
+"brew:actionlint" = "latest"
+"brew:age" = "latest"
+"brew:atuin" = "latest"
+"brew:awscli" = "latest"
+"brew:bat" = "latest"
+"brew:bison" = "latest"
+"brew:cask" = "latest"
+"brew:cowsay" = "latest"
+"brew:dash-shell" = "latest"
+"brew:dotnet" = "latest"
+"brew:fastfetch" = "latest"
+"brew:ffmpeg" = "latest"
+"brew:gnu-getopt" = "latest"
+"brew:hashicorp/tap/terraform" = "latest"
+"brew:hello" = "latest"
+"brew:jq" = "latest"
+"brew:just" = "latest"
+"brew:le" = "latest"
+"brew:libadwaita" = "latest"
+"brew:lua" = "latest"
+"brew:nushell" = "latest"
+"brew:odin" = "latest"
+"brew:osqp" = "latest"
+"brew:pass" = "latest"
+"brew:patchelf" = "latest"
+"brew:perl" = "latest"
+"brew:sl" = "latest"
+"brew:starship" = "latest"
+"brew:swift" = "latest"
+"brew:taproom" = "latest"
+"brew:tree" = "latest"
+"brew:wget" = "latest"
+"brew:zoxide" = "latest"
+
+# Homebrew casks (apps & Nerd Fonts supported natively by mise's cask driver;
+# ublue-os/tap casks use custom DSL like on_arch_conditional and live in `[tasks.brew-ublue]` / `Brewfile`)
+"brew-cask:android-platform-tools" = "latest"
+"brew-cask:devin-cli" = "latest"
+"brew-cask:font-0xproto-nerd-font" = "latest"
+"brew-cask:font-blex-mono-nerd-font" = "latest"
+"brew-cask:font-caskaydia-mono-nerd-font" = "latest"
+"brew-cask:font-comic-shanns-mono-nerd-font" = "latest"
+"brew-cask:font-droid-sans-mono-nerd-font" = "latest"
+"brew-cask:font-fira-code-nerd-font" = "latest"
+"brew-cask:font-go-mono-nerd-font" = "latest"
+"brew-cask:font-jetbrains-mono-nerd-font" = "latest"
+"brew-cask:font-sauce-code-pro-nerd-font" = "latest"
+"brew-cask:font-source-code-pro" = "latest"
+"brew-cask:font-ubuntu-nerd-font" = "latest"
+"brew-cask:grok-build" = "latest"
+
+# Flatpak applications (system)
+"flatpak:app.zen_browser.zen" = "latest"
+"flatpak:br.com.wiselabs.simplexity" = "latest"
+"flatpak:ca.desrt.dconf-editor" = "latest"
+"flatpak:com.bitwarden.desktop" = "latest"
+"flatpak:com.collaboraoffice.Office" = "latest"
+"flatpak:com.github.PintaProject.Pinta" = "latest"
+"flatpak:com.github.marhkb.Pods" = "latest"
+"flatpak:com.github.tchx84.Flatseal" = "latest"
+"flatpak:com.kagi.OrionGtk" = "latest"
+"flatpak:com.logseq.Logseq" = "latest"
+"flatpak:com.mastermindzh.tidal-hifi" = "latest"
+"flatpak:com.mattjakeman.ExtensionManager" = "latest"
+"flatpak:com.microsoft.Edge" = "latest"
+"flatpak:com.obsproject.Studio" = "latest"
+"flatpak:com.ranfdev.DistroShelf" = "latest"
+"flatpak:com.spotify.Client" = "latest"
+"flatpak:com.stremio.Stremio" = "latest"
+"flatpak:com.usebruno.Bruno" = "latest"
+"flatpak:io.ente.auth" = "latest"
+"flatpak:io.github.celluloid_player.Celluloid" = "latest"
+"flatpak:io.github.flattool.Ignition" = "latest"
+"flatpak:io.github.flattool.Warehouse" = "latest"
+"flatpak:io.github.kolunmi.Bazaar" = "latest"
+"flatpak:io.github.lullabyX.sone" = "latest"
+"flatpak:io.github.martchus.syncthingtray" = "latest"
+"flatpak:io.github.mpobaschnig.Vaults" = "latest"
+"flatpak:io.github.peazip.PeaZip" = "latest"
+"flatpak:io.github.pwr_solaar.solaar" = "latest"
+"flatpak:io.github.wiiznokes.fan-control" = "latest"
+"flatpak:io.gitlab.adhami3310.Impression" = "latest"
+"flatpak:io.gitlab.metadatacleaner.metadatacleaner" = "latest"
+"flatpak:io.missioncenter.MissionCenter" = "latest"
+"flatpak:io.podman_desktop.PodmanDesktop" = "latest"
+"flatpak:it.mijorus.gearlever" = "latest"
+"flatpak:it.mijorus.smile" = "latest"
+"flatpak:net.nokyan.Resources" = "latest"
+"flatpak:net.trowell.typesetter" = "latest"
+"flatpak:org.altlinux.Tuner" = "latest"
+"flatpak:org.bleachbit.BleachBit" = "latest"
+"flatpak:org.ecosia.Browser" = "latest"
+"flatpak:org.equicord.equibop" = "latest"
+"flatpak:org.ferdium.Ferdium" = "latest"
+"flatpak:org.freedesktop.Piper" = "latest"
+"flatpak:org.gnome.Builder" = "latest"
+"flatpak:org.gnome.Calculator" = "latest"
+"flatpak:org.gnome.Calendar" = "latest"
+"flatpak:org.gnome.Characters" = "latest"
+"flatpak:org.gnome.Connections" = "latest"
+"flatpak:org.gnome.Contacts" = "latest"
+"flatpak:org.gnome.DejaDup" = "latest"
+"flatpak:org.gnome.Epiphany" = "latest"
+"flatpak:org.gnome.FileRoller" = "latest"
+"flatpak:org.gnome.Firmware" = "latest"
+"flatpak:org.gnome.Logs" = "latest"
+"flatpak:org.gnome.Loupe" = "latest"
+"flatpak:org.gnome.Maps" = "latest"
+"flatpak:org.gnome.NautilusPreviewer" = "latest"
+"flatpak:org.gnome.NetworkDisplays" = "latest"
+"flatpak:org.gnome.Papers" = "latest"
+"flatpak:org.gnome.SimpleScan" = "latest"
+"flatpak:org.gnome.Snapshot" = "latest"
+"flatpak:org.gnome.SoundRecorder" = "latest"
+"flatpak:org.gnome.TextEditor" = "latest"
+"flatpak:org.gnome.Weather" = "latest"
+"flatpak:org.gnome.baobab" = "latest"
+"flatpak:org.gnome.clocks" = "latest"
+"flatpak:org.gnome.font-viewer" = "latest"
+"flatpak:org.gnome.seahorse.Application" = "latest"
+"flatpak:org.localsend.localsend_app" = "latest"
+"flatpak:org.mozilla.firefox" = "latest"
+"flatpak:org.mozilla.thunderbird_esr" = "latest"
+"flatpak:page.tesk.Refine" = "latest"
+"flatpak:re.sonny.Tangram" = "latest"
+
+# Flatpak applications (user)
+"flatpak-user:io.github.yelanxin.OxiTide" = "latest"
+
+[bootstrap.hooks]
+post-dotfiles = { run = "systemctl --user daemon-reload >/dev/null 2>&1 || true" }
+
+[tasks.brew-ublue]
+description = "Install Universal Blue tap casks (custom cask DSL not handled by mise's native cask driver)"
+run = """
+if ! command -v brew >/dev/null 2>&1; then
+    echo "Homebrew not found; skipping ublue-os/tap casks"
+    exit 0
+fi
+brew tap ublue-os/tap
+brew install --cask \
+    ublue-os/tap/antigravity-ide-linux \
+    ublue-os/tap/antigravity-linux \
+    ublue-os/tap/aurora-wallpapers \
+    ublue-os/tap/bazzite-wallpapers \
+    ublue-os/tap/bluefin-wallpapers \
+    ublue-os/tap/bluefin-wallpapers-extra \
+    ublue-os/tap/framework-wallpapers
+"""

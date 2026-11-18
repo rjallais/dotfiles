@@ -1,12 +1,12 @@
 # ~/.gitconfig - Git configuration
 
 [user]
-{{- if .git_email_default }}
-    email = {{ .git_email_default }}
-{{- end }}
-{{- if .name }}
-    name = {{ .name }}
-{{- end }}
+{%- if vars.git_email_default %}
+    email = {{ vars.git_email_default }}
+{%- endif %}
+{%- if vars.name %}
+    name = {{ vars.name }}
+{%- endif %}
     signingkey = ~/.ssh/id_ed25519_signing.pub
     useconfigonly = true
 

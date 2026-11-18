@@ -1,3 +1,13 @@
+# Shared global Mise configuration, tools, settings, and cross-platform dotfiles
+
+[vars.name]
+default = "René Jallais"
+prompt = "Full name"
+
+[vars.git_email_default]
+default = "commits@jallais.dev"
+prompt = "Default git email"
+
 [tools]
 aqua = "latest"
 "aqua:exercism/cli" = "latest"
@@ -12,7 +22,6 @@ bitwarden = "latest"
 bottom = "latest"
 bun = "latest"
 cargo-binstall = "latest"
-chezmoi = "latest"
 claude-code = "latest"
 cmake = "4.5.0"
 codex = "latest"
@@ -109,6 +118,7 @@ experimental = true
 aqua.github_attestations = false
 idiomatic_version_file_enable_tools = []
 minimum_release_age = "0s"
+dotfiles.default_mode = "symlink"
 
 [settings.npm]
 package_manager = "aube"
@@ -124,3 +134,29 @@ compile = false
 
 [settings.github]
 credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
+
+[dotfiles]
+"~/.gitconfig" = { source = "../../dotfiles/.gitconfig.tera", mode = "template", permissions = "0644" }
+"~/.gitconfig.github" = { source = "../../dotfiles/.gitconfig.github" }
+"~/.gitconfig.gitlab" = { source = "../../dotfiles/.gitconfig.gitlab" }
+"~/.gitconfig.codefloe" = { source = "../../dotfiles/.gitconfig.codefloe" }
+"~/.config/git/ignore" = { source = "../../dotfiles/.config/git/ignore" }
+"~/.config/starship.toml" = { source = "../../dotfiles/.config/starship.toml" }
+"~/.config/topgrade.toml" = { source = "../../dotfiles/.config/topgrade.toml" }
+"~/.config/fnox/config.toml" = { source = "../../dotfiles/.config/fnox/config.toml" }
+"~/.config/micro/settings.json" = { source = "../../dotfiles/.config/micro/settings.json" }
+"~/.config/micro/bindings.json" = { source = "../../dotfiles/.config/micro/bindings.json" }
+"~/.config/television/config.toml" = { source = "../../dotfiles/.config/television/config.toml" }
+"~/.config/delta/settings.json" = { source = "../../dotfiles/.config/delta/settings.json" }
+
+[tasks.nu-autoload]
+description = "Generate Nushell vendor/autoload integration scripts"
+run = """
+if command -v nu >/dev/null 2>&1; then
+    nu "{{ config_root }}/scripts/nu-autoload.nu"
+elif [ -x /home/linuxbrew/.linuxbrew/bin/nu ]; then
+    /home/linuxbrew/.linuxbrew/bin/nu "{{ config_root }}/scripts/nu-autoload.nu"
+else
+    mise exec aqua:nushell/nushell -- nu "{{ config_root }}/scripts/nu-autoload.nu"
+fi
+"""

@@ -1,0 +1,24 @@
+# Unix (Linux + macOS) Mise bootstrap configuration
+
+[dotfiles]
+"~/.bashrc" = { source = "../../dotfiles/.bashrc" }
+"~/.profile" = { source = "../../dotfiles/.profile" }
+"~/.config/fish/config.fish" = { source = "../../dotfiles/.config/fish/config.fish" }
+"~/.config/fish/fish_plugins" = { source = "../../dotfiles/.config/fish/fish_plugins" }
+"~/.config/fish/conf.d/brew.fish" = { source = "../../dotfiles/.config/fish/conf.d/brew.fish" }
+"~/.config/fish/conf.d/github-token.fish" = { source = "../../dotfiles/.config/fish/conf.d/github-token.fish" }
+"~/.config/fish/conf.d/rustup.fish" = { source = "../../dotfiles/.config/fish/conf.d/rustup.fish" }
+"~/.config/nushell/config.nu" = { source = "../../dotfiles/.config/nushell/config.nu" }
+"~/.config/nushell/env.nu" = { source = "../../dotfiles/.config/nushell/env.nu" }
+"~/.config/nushell/uutils-prefer.nu" = { source = "../../dotfiles/.config/nushell/uutils-prefer.nu" }
+"~/.config/wax/Waxfile.toml" = { source = "../../dotfiles/.config/wax/Waxfile.toml" }
+
+[bootstrap.repos]
+"~/.local/share/argc-completions" = { url = "https://github.com/sigoden/argc-completions.git" }
+
+[bootstrap.mise_shell_activate]
+# Bash and Fish already activate mise inside their managed dotfiles
+zsh = true
+
+[bootstrap.hooks]
+post-tools = { run = "mise run nu-autoload" }

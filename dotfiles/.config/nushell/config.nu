@@ -85,7 +85,7 @@ const zoxide_init = ($vendor_autoload | path join "zoxide.nu")
 const atuin_init = ($vendor_autoload | path join "atuin.nu")
 const brew_init = ($vendor_autoload | path join "brew.nu")
 const uutils_prefer = ($nu.default-config-dir | path join "uutils-prefer.nu")
-const argc_completions_root = "{{ .chezmoi.homeDir }}/.local/share/argc-completions"
+const argc_completions_root = ($nu.home-dir | path join ".local" "share" "argc-completions")
 const argc_completions_init = ($vendor_autoload | path join "argc-completions.nu")
 
 def --env ensure_mise_activation [] {
@@ -165,7 +165,7 @@ if (sys host | get name) != "Windows" {
 }
 
 # pnpm
-$env.PNPM_HOME = "{{ .chezmoi.homeDir }}/.local/share/pnpm"
+$env.PNPM_HOME = ($nu.home-dir | path join ".local" "share" "pnpm")
 $env.PATH = ($env.PATH | split row (char esep) | prepend ($env.PNPM_HOME | path join "bin"))
 
 def --env ensure_homebrew_path [] {

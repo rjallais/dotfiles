@@ -31,13 +31,13 @@ curl https://mise.run | sh && ~/.local/bin/mise bootstrap \
   --skip-dirty
 
 # Optional on Linux/Bazzite once Homebrew is installed:
-mise run brew-ublue
+~/.local/bin/mise run brew-ublue
 
 # Optional for Fish users (installs Fisher & plugins from fish_plugins):
-mise run fish-plugins
+~/.local/bin/mise run fish-plugins
 ```
 
-> **Existing Dotfiles Note:** `mise bootstrap` stops rather than overwriting conflicting regular files (such as a starter `~/.bashrc` or `~/.profile`), while `--skip-dirty` applies only to Git repositories under `[bootstrap.repos]`. Review conflicts with `MISE_CONFIG_DIR="$HOME/dotfiles/.config/mise" mise dot diff`, back up and move conflicting files aside before re-running bootstrap (and merge back any local settings from `~/.config/mise.bak`), or pass `--force-dotfiles` intentionally after backing them up. `zen-filter.service` runs only when `~/.local/bin/zen-filter-bg` exists.
+> **Existing Dotfiles Note:** `mise bootstrap` stops rather than overwriting conflicting regular files (such as a starter `~/.bashrc` or `~/.profile`), while `--skip-dirty` applies only to Git repositories under `[bootstrap.repos]`. Review conflicts with `MISE_CONFIG_DIR="$HOME/dotfiles/.config/mise" mise dot diff`, back up and move conflicting files aside before re-running bootstrap (and merge back any local settings from `~/.config/mise.bak`), or pass `--force-dotfiles` intentionally after backing them up. Nushell configuration targets **Nushell 0.110.0+** (`config.nu` header `0.117.0`), and `zen-filter.service` runs only when `~/.local/bin/zen-filter-bg` exists.
 
 #### Windows (PowerShell)
 
@@ -55,7 +55,7 @@ $env:Path = "$miseBin;$env:Path"
   --skip-dirty
 ```
 
-> **Windows Note:** `mise dotfiles` uses symlinks on Unix (`dotfiles.default_mode = "symlink"`), and automatically falls back to copying on Windows unless Developer Mode is enabled (`dotfiles.windows_symlinks = true`). Add `$env:LOCALAPPDATA\mise\mise\bin` to your user `PATH` (or install via `irm https://mise.jdx.dev/install.ps1 | iex`). When refreshing copied Windows dotfiles after pulling updates (`mise bootstrap --update --skip-dirty`), review any copy conflicts with `mise dot diff` and apply intentionally with `mise dot apply --force`.
+> **Windows Note:** `mise dotfiles` uses symlinks on Unix (`dotfiles.default_mode = "symlink"`), and automatically falls back to copying on Windows unless Developer Mode is enabled (`dotfiles.windows_symlinks = true`). Windows `[dotfiles]` mappings assume standard `%USERPROFILE%\AppData\Roaming` and `%USERPROFILE%\AppData\Local` profile locations (set `XDG_CONFIG_HOME` or copy manually if `LOCALAPPDATA` was relocated). Add `$env:LOCALAPPDATA\mise\mise\bin` to your user `PATH` (or install via `irm https://mise.jdx.dev/install.ps1 | iex`). When `mise bootstrap --update --skip-dirty` stops on a changed copied dotfile, review differences with `mise dot diff`, force-apply only the reviewed target(s) (e.g. `mise dot apply --force "~/AppData/Local/television/config/config.toml"`), and then re-run `mise bootstrap --update --skip-dirty` to resume any remaining steps.
 
 ## Layout
 

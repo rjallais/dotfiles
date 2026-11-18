@@ -31,5 +31,22 @@ if ! command -v fish >/dev/null 2>&1; then
     echo "Fish not found; skipping fisher plugin sync"
     exit 0
 fi
-fish -c 'if not functions -q fisher; curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher; end; fisher update'
+fish -c '
+if not functions -q fisher
+    set -l fisher_tmp (mktemp)
+    if not curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish -o $fisher_tmp
+        rm -f $fisher_tmp
+        echo "Failed to download Fisher installer" >&2
+        exit 1
+    end
+    source $fisher_tmp
+    set -l src_status $status
+    rm -f $fisher_tmp
+    if test $src_status -ne 0; or not fisher install jorgebucaran/fisher
+        echo "Failed to install Fisher" >&2
+        exit 1
+    end
+end
+fisher update
+'
 """

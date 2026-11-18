@@ -1,10 +1,11 @@
 # env.nu is loaded BEFORE config.nu and BEFORE the autoload files
 # under vendor/autoload/. Adding user local bins, mise shims, and
 # /opt/ubrew/prefix/bin here ensures CLI tools are discoverable early.
+let home = ($env.HOME? | default ($nu.home-dir? | default $nu.home-path?))
 let early_bins = (
     [
-        ($nu.home-dir | path join '.local' 'bin')
-        ($nu.home-dir | path join '.local' 'share' 'mise' 'shims')
+        ($home | path join '.local' 'bin')
+        ($home | path join '.local' 'share' 'mise' 'shims')
         '/opt/ubrew/prefix/bin'
     ]
     | where {|p| $p | path exists }
@@ -18,11 +19,11 @@ if ($early_bins | is-not-empty) {
 }
 
 # Aqua global config (for standalone `aqua g`)
-$env.AQUA_GLOBAL_CONFIG = ($nu.home-dir | path join "aqua.yaml")
+$env.AQUA_GLOBAL_CONFIG = ($home | path join "aqua.yaml")
 
 # DigitalOcean Inference API key (for Grok CLI custom DO models)
 # Mirrors bashrc: source OPENAI_API_KEY from ~/.hermes/.env
-let hermes_env = ($nu.home-dir | path join '.hermes' '.env')
+let hermes_env = ($home | path join '.hermes' '.env')
 if ($hermes_env | path exists) {
     let line = (
         try {
@@ -49,11 +50,13 @@ if ($hermes_env | path exists) {
 $env.NINEROUTER_URL = "http://localhost:20128"
 
 # Load encrypted API keys via fnox when age identity is available
-let fnox_cfg = ($nu.home-dir | path join '.config' 'fnox' 'config.toml')
-let fnox_age = ($nu.home-dir | path join '.config' 'fnox' 'age.txt')
-if (which fnox | is-not-empty) and ($fnox_cfg | path exists) and (($fnox_age | path exists) or ($env.FNOX_AGE_KEY? != null) or ($env.FNOX_AGE_KEY_FILE? != null)) {
-    let fnox_env = if ($env.FNOX_AGE_KEY? == null) and ($env.FNOX_AGE_KEY_FILE? == null) and ($fnox_age | path exists) {
-        { FNOX_AGE_KEY_FILE: $fnox_age }
+let fnox_cfg = ($home | path join '.config' 'fnox' 'config.toml')
+let fnox_age = ($home | path join '.config' 'fnox' 'age.txt')
+let has_age_key = (($env.FNOX_AGE_KEY? | default "" | str trim) | is-not-empty)
+let has_age_key_file = (($env.FNOX_AGE_KEY_FILE? | default "" | str trim) | is-not-empty)
+if (which fnox | is-not-empty) and ($fnox_cfg | path exists) and (($fnox_age | path exists) or $has_age_key or $has_age_key_file) {
+    let fnox_env = if (not $has_age_key) and (not $has_age_key_file) and ($fnox_age | path exists) {
+        { FNOX_AGE_KEY: null, FNOX_AGE_KEY_FILE: $fnox_age }
     } else { {} }
     let res = (with-env $fnox_env { ^fnox -c $fnox_cfg export -f json --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY | complete })
     if $res.exit_code == 0 and ($res.stdout | str trim | is-not-empty) {

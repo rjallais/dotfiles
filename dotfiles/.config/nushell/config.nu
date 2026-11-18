@@ -1,7 +1,7 @@
 # config.nu
 #
 # Installed by:
-# version = "0.108.0"
+# version = "0.117.0"
 #
 # This file is used to override default Nushell settings, define
 # (or import) custom commands, or run any other startup tasks.
@@ -269,17 +269,17 @@ $env.config = (
     | upsert hooks { default {} }
     | upsert hooks.pre_prompt { default [] }
 )
-$env.config.hooks.pre_prompt = (
-    $env.config.hooks.pre_prompt
-    | append { code: { normalize_path } }
-)
-
 if $env.WSL_DISTRO_NAME? != null {
     $env.config.hooks.pre_prompt = (
         $env.config.hooks.pre_prompt
         | append { code: { normalize_wsl_mise_paths } }
     )
 }
+
+$env.config.hooks.pre_prompt = (
+    $env.config.hooks.pre_prompt
+    | append { code: { normalize_path } }
+)
 
 if $env.MISE_GITHUB_TOKEN? == null {
     if ((which gh | length) > 0) {
@@ -304,13 +304,18 @@ $env.GOOGLE_CLOUD_LOCATION = "global"
 # These functions require sudo, systemctl, and Linux paths
 def sudo-download-install [url: string, dest: path] {
     let tmp = (^mktemp | str trim)
-    let cleanup = { ^rm -f $tmp | complete | ignore }
+    let staged = $"($dest).new.($nu.pid)"
+    let cleanup = {
+        ^rm -f $tmp | complete | ignore
+        ^sudo rm -f $staged | complete | ignore
+    }
     try {
         let res = (^curl --silent --fail --location $url -o $tmp | complete)
         if $res.exit_code != 0 or (^test -s $tmp | complete).exit_code != 0 {
             error make { msg: $"Failed to download ($url): ($res.stderr | str trim)" }
         }
-        ^sudo install -m 0644 -o 0 -g 0 $tmp $dest
+        ^sudo install -m 0644 -o 0 -g 0 $tmp $staged
+        ^sudo mv -f $staged $dest
     } catch { |err|
         do $cleanup
         error make $err
@@ -334,20 +339,27 @@ def host-os-version-id [] {
 }
 
 def sysext-version-key [sname: string, full_path: string] {
-    let base = ($full_path | path basename | str replace $"($sname)-" "" | str replace ".raw" "")
-    let ver = (
-        $base
-        | split row "-"
-        | get --optional 0
-        | default ""
-        | split row "."
-        | each {|seg|
-            let digits = ($seg | parse --regex '^(\d+)' | get --optional 0.capture0 | default "0")
-            $digits | fill -a r -c "0" -w 8
+    let stem = ($full_path | path basename | str replace $"($sname)-" "" | str replace --regex '\.raw$' '')
+    let ver = ($stem | str replace --regex '-(?:\d+|rawhide)-(?:x86-64|x86_64|aarch64|arm64|riscv64)$' '')
+    let parts = ($ver | split row "~")
+    let main_ver = ($parts | get --optional 0 | default "")
+    let pre_ver = ($parts | skip 1 | str join "~")
+    let pad_ver = {|s|
+        $s
+        | str replace --all --regex '(\d+)' '|$1|'
+        | split row '|'
+        | where {|t| $t | is-not-empty }
+        | each {|t|
+            if ($t =~ '^\d+$') {
+                $"1($t | fill -a r -c '0' -w 12)"
+            } else {
+                $"2($t)"
+            }
         }
-        | str join "."
-    )
-    $"($ver)|($full_path)"
+        | str join ''
+    }
+    let pre_tag = if ($parts | length) > 1 { $"0(do $pad_ver $pre_ver)" } else { "1" }
+    $"(do $pad_ver $main_ver)|($pre_tag)|($full_path)"
 }
 
 def install-sysext-from [sysext: string, url: string] {
@@ -422,21 +434,42 @@ def sysexts-update-all [
         ((^systemctl is-active --quiet sysexts-manager.service | complete).exit_code == 0)
     } else { false }
     let should_manage_service = (not $dry_run) and $service_exists and (not $was_masked)
-
-    if $should_manage_service {
-        ^$runner systemctl mask --now --runtime sysexts-manager.service | complete | ignore
+    let did_mask = if $should_manage_service {
+        let mask_res = (^$runner systemctl mask --now --runtime sysexts-manager.service | complete)
+        if $mask_res.exit_code != 0 {
+            let now_masked = (((^systemctl is-enabled sysexts-manager.service | complete).stdout | str trim) | str starts-with "masked")
+            if $now_masked {
+                ^$runner systemctl unmask --runtime sysexts-manager.service | complete | ignore
+            }
+            error make { msg: $"Failed to quiesce sysexts-manager.service: ($mask_res.stderr | str trim)" }
+        }
+        true
+    } else {
+        false
     }
 
     let restore_service = {
-        if $should_manage_service {
-            ^$runner systemctl unmask --runtime sysexts-manager.service | complete | ignore
-            if $was_active {
-                ^$runner systemctl start sysexts-manager.service | complete | ignore
+        if not $did_mask {
+            return []
+        }
+        mut errs = []
+        let unmask_res = (^$runner systemctl unmask --runtime sysexts-manager.service | complete)
+        if $unmask_res.exit_code != 0 {
+            $errs = ($errs | append $"unmask failed: ($unmask_res.stderr | str trim)")
+        } else if $was_active {
+            let start_res = (^$runner systemctl start sysexts-manager.service | complete)
+            if $start_res.exit_code != 0 {
+                $errs = ($errs | append $"start failed: ($start_res.stderr | str trim)")
             }
         }
+        $errs
     }
 
-    try {
+    let os_ver = (host-os-version-id)
+    let rel_tag = if ($os_ver | is-not-empty) { $"-($os_ver)-" } else { "" }
+    let mgr_link = "/var/lib/extensions/sysexts-manager.raw"
+
+    let planned_mgr_target = try {
         print $"==> step 1 updating sysexts via ($runner)"
         if $dry_run {
             print $"[dry-run] would run: ($runner) sysexts-manager update"
@@ -451,38 +484,63 @@ def sysexts-update-all [
             ^$runner sysexts-manager ...$vflag enable
         }
 
-        print $"==> step 3 refreshing merge via ($runner)"
-        if $dry_run {
-            print $"[dry-run] would run: ($runner) systemctl restart systemd-sysext.service"
-        } else {
-            ^$runner systemctl restart systemd-sysext.service
-        }
-    } catch { |err|
-        do $restore_service
-        error make $err
-    }
-    do $restore_service
-
-    let os_ver = (host-os-version-id)
-    let rel_tag = if ($os_ver | is-not-empty) { $"-($os_ver)-" } else { "" }
-
-    print $"==> pruning old images, keep ($keep) newest per sysext..."
-    let mgr_link = "/var/lib/extensions/sysexts-manager.raw"
-    if (not $dry_run) and (($mgr_link | path type) == "symlink") {
         let mgr_matches = (glob "/var/lib/extensions.d/sysexts-manager-*.raw")
         let compat_mgr = if ($rel_tag | is-not-empty) {
             $mgr_matches | where {|p| ($p | path basename | str contains $rel_tag) }
         } else {
             $mgr_matches
         }
-        if ($compat_mgr | is-not-empty) {
+        let switch_info = if ($mgr_link | path type) == "symlink" and ($compat_mgr | is-not-empty) {
             let newest_mgr = ($compat_mgr | sort-by {|p| sysext-version-key "sysexts-manager" $p } | last)
             let cur_mgr = (try { $mgr_link | path expand } catch { "" })
-            if ($cur_mgr | is-empty) or ($cur_mgr not-in ($compat_mgr | each {|p| $p | path expand })) or (($newest_mgr | path expand) != $cur_mgr) {
-                ^$runner ln -snf $newest_mgr $mgr_link
+            let compat_expanded = ($compat_mgr | each {|p| $p | path expand })
+            let needs_switch = ($cur_mgr | is-empty) or ($cur_mgr not-in $compat_expanded) or (($newest_mgr | path expand) != $cur_mgr)
+            let planned = ($newest_mgr | path expand)
+            if $needs_switch {
+                if $dry_run {
+                    print $"[dry-run] would link: ($newest_mgr) -> ($mgr_link)"
+                    { switched: false, prev: "", planned: $planned }
+                } else {
+                    let prev = ((^readlink $mgr_link | complete).stdout | str trim)
+                    ^$runner ln -snf $newest_mgr $mgr_link
+                    { switched: true, prev: $prev, planned: $planned }
+                }
+            } else {
+                { switched: false, prev: "", planned: $planned }
+            }
+        } else {
+            { switched: false, prev: "", planned: "" }
+        }
+
+        print $"==> step 3 refreshing merge via ($runner)"
+        if $dry_run {
+            print $"[dry-run] would run: ($runner) systemctl restart systemd-sysext.service"
+        } else {
+            try {
+                ^$runner systemctl restart systemd-sysext.service
+            } catch { |err|
+                if $switch_info.switched and ($switch_info.prev | is-not-empty) {
+                    ^$runner ln -snf $switch_info.prev $mgr_link | complete | ignore
+                }
+                error make $err
             }
         }
+        $switch_info.planned
+    } catch { |err|
+        let rerrs = (do $restore_service)
+        let msg = if ($rerrs | is-not-empty) {
+            $"($err.msg); restore errors: ($rerrs | str join '; ')"
+        } else {
+            $err.msg
+        }
+        error make { msg: $msg }
     }
+    let rerrs = (do $restore_service)
+    if ($rerrs | is-not-empty) {
+        error make { msg: $"sysexts-manager restore failed: ($rerrs | str join '; ')" }
+    }
+
+    print $"==> pruning old images, keep ($keep) newest per sysext..."
 
     let conf_files = (glob "/etc/sysexts-manager/*.conf")
     let names: list<string> = (
@@ -498,17 +556,20 @@ def sysexts-update-all [
 
     for sname in $names {
         let matches = (glob $"/var/lib/extensions.d/($sname)-*.raw")
-        let link_path = $"/var/lib/extensions/($sname).raw"
-        let active_target = if ($link_path | path type) == "symlink" {
-            try { $link_path | path expand } catch { "" }
+        let persist_link = $"/var/lib/extensions/($sname).raw"
+        let run_link = $"/run/extensions/($sname).raw"
+        let persist_target = if $sname == "sysexts-manager" and ($planned_mgr_target | is-not-empty) {
+            $planned_mgr_target
+        } else if ($persist_link | path type) == "symlink" {
+            try { $persist_link | path expand } catch { "" }
         } else { "" }
-        let active_kept = ($active_target | is-not-empty) and ($active_target in ($matches | each {|p| $p | path expand }))
-        let pool = if $active_kept {
-            $matches | where {|p| ($p | path expand) != $active_target }
-        } else {
-            $matches
-        }
-        let extra_keep = if $active_kept { $keep - 1 } else { $keep }
+        let run_target = if ($run_link | path type) == "symlink" {
+            try { $run_link | path expand } catch { "" }
+        } else { "" }
+        let active_targets = ([$persist_target $run_target] | where {|p| $p | is-not-empty } | uniq)
+        let protected = ($matches | where {|p| ($p | path expand) in $active_targets })
+        let pool = ($matches | where {|p| ($p | path expand) not-in $active_targets })
+        let extra_keep = ([0 ($keep - ($protected | length))] | math max)
         let n_pool = ($pool | length)
         if $n_pool > $extra_keep {
             let ranked = (

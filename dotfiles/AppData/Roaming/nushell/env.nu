@@ -2,7 +2,7 @@
 
 $env.NINEROUTER_URL = "http://localhost:20128"
 
-let home = ($env.HOME? | default $env.USERPROFILE?)
+let home = ($env.HOME? | default ($env.USERPROFILE? | default ($nu.home-dir? | default $nu.home-path?)))
 if $home != null {
     let early_bins = (
         [
@@ -18,9 +18,11 @@ if $home != null {
 
     let fnox_cfg = ($home | path join ".config" "fnox" "config.toml")
     let fnox_age = ($home | path join ".config" "fnox" "age.txt")
-    if (which fnox | is-not-empty) and ($fnox_cfg | path exists) and (($fnox_age | path exists) or ($env.FNOX_AGE_KEY? != null) or ($env.FNOX_AGE_KEY_FILE? != null)) {
-        let fnox_env = if ($env.FNOX_AGE_KEY? == null) and ($env.FNOX_AGE_KEY_FILE? == null) and ($fnox_age | path exists) {
-            { FNOX_AGE_KEY_FILE: $fnox_age }
+    let has_age_key = (($env.FNOX_AGE_KEY? | default "" | str trim) | is-not-empty)
+    let has_age_key_file = (($env.FNOX_AGE_KEY_FILE? | default "" | str trim) | is-not-empty)
+    if (which fnox | is-not-empty) and ($fnox_cfg | path exists) and (($fnox_age | path exists) or $has_age_key or $has_age_key_file) {
+        let fnox_env = if (not $has_age_key) and (not $has_age_key_file) and ($fnox_age | path exists) {
+            { FNOX_AGE_KEY: null, FNOX_AGE_KEY_FILE: $fnox_age }
         } else { {} }
         let res = (with-env $fnox_env { ^fnox -c $fnox_cfg export -f json --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY | complete })
         if $res.exit_code == 0 and ($res.stdout | str trim | is-not-empty) {

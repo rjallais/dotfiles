@@ -105,6 +105,7 @@ amp = { version = "latest", allow_builds = ["@ampcode/cli"] }
 "cargo:kombrucha" = "0.2.3"
 
 "aqua:jetify-com/devbox" = "latest"
+"aqua:syncthing/syncthing" = { version = "latest", os = ["linux"] }
 "aqua:BurntSushi/ripgrep" = { version = "latest", os = ["windows"] }
 "aqua:carapace-sh/carapace-bin" = { version = "latest", os = ["windows"] }
 "aqua:nushell/nushell" = { version = "latest", os = ["windows", "macos"] }

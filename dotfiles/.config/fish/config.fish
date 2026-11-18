@@ -85,11 +85,18 @@ end
 # Deduplicate PATH while keeping non-empty entries in first-seen order
 set -l unique_paths
 for path_item in $PATH
-    if test -n "$path_item"; and not contains $path_item $unique_paths
+    if test -n "$path_item"; and not contains -- "$path_item" $unique_paths
         set unique_paths $unique_paths $path_item
     end
 end
 set -gx PATH $unique_paths
+
+# Fallback GITHUB_TOKEN lookup after PATH, Mise activation, and Homebrew setup
+if not set -q GITHUB_TOKEN; or test -z "$GITHUB_TOKEN"
+    if test -f "$__fish_config_dir/conf.d/github-token.fish"
+        source "$__fish_config_dir/conf.d/github-token.fish"
+    end
+end
 
 # 9Router gateway
 set -gx NINEROUTER_URL "http://localhost:20128"

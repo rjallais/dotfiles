@@ -1,6 +1,6 @@
 # Homebrew configuration for fish shell
 if test -x /home/linuxbrew/.linuxbrew/bin/brew
-    eval (/home/linuxbrew/.linuxbrew/bin/brew shellenv)
+    /home/linuxbrew/.linuxbrew/bin/brew shellenv fish | source
 else if test -x /opt/homebrew/bin/brew
-    eval (/opt/homebrew/bin/brew shellenv)
+    /opt/homebrew/bin/brew shellenv fish | source
 end

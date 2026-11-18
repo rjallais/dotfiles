@@ -6,6 +6,7 @@
 "~/.config/zed/settings.json" = { source = "../../dotfiles/.config/zed/settings.json" }
 "~/.config/bluefin-cli/config.yaml" = { source = "../../dotfiles/.config/bluefin-cli/config.yaml" }
 "~/.config/bluefin-cli/shell.json" = { source = "../../dotfiles/.config/bluefin-cli/shell.json" }
+"~/.homebrew/brew.env" = { source = "../../dotfiles/.config/brew.env" }
 "~/.config/homebrew/brew.env" = { source = "../../dotfiles/.config/brew.env" }
 "~/.config/environment.d/10-local-bin.conf" = { source = "../../dotfiles/.config/environment.d/10-local-bin.conf" }
 "~/.config/environment.d/blur-my-shell.conf" = { source = "../../dotfiles/.config/environment.d/blur-my-shell.conf" }

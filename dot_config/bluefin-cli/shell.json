@@ -1,0 +1,16 @@
+{
+  "atuin": true,
+  "bat": true,
+  "carapace": false,
+  "eza": true,
+  "fzf": true,
+  "glow": true,
+  "gsudo": false,
+  "motd": true,
+  "starship": true,
+  "ugrep": false,
+  "uutilscoreutils": false,
+  "uutilsdiffutils": false,
+  "uutilsfindutils": false,
+  "zoxide": true
+}

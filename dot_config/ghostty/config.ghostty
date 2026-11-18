@@ -1,0 +1,15 @@
+# Ghostty Configuration
+# Beautifully customized darker theme with a premium purple hue
+
+# Base Theme: Adwaita Dark (provides a polished, modern, high-contrast UI)
+theme = "Adwaita Dark"
+
+# Background: Customized to a rich, deep midnight purple hue (darker than the default Adwaita Dark gray)
+background = #161222
+
+# Selection Background: A subtle purple tint to match the aesthetic
+selection-background = #352a4e
+selection-foreground = #ffffff
+
+# Shell: Use Nushell
+command = /var/home/linuxbrew/.linuxbrew/bin/nu

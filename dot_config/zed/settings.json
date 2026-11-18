@@ -1,0 +1,136 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run `zed: open default settings` from the
+// command palette (cmd-shift-p / ctrl-shift-p)
+{
+  "language_models": {
+    "opencode": {
+      "show_go_models": false,
+      "show_zen_models": true,
+    },
+  },
+  "edit_predictions": {
+    "provider": "zed",
+  },
+  "project_panel": {
+    "dock": "right",
+  },
+  "outline_panel": {
+    "dock": "right",
+  },
+  "collaboration_panel": {
+    "dock": "right",
+  },
+  "git_panel": {
+    "dock": "right",
+  },
+  "terminal": {
+    "font_size": 13.0,
+    "font_family": "JetBrainsMono Nerd Font",
+    "dock": "bottom",
+    "shell": "system",
+  },
+  "agent_servers": {
+    "grok-build": {
+      "default_config_options": {
+        "model": "9router"
+      },
+      "type": "registry"
+    },
+    "antigravity-acp": {
+      "default_config_options": {
+        "mode": "yolo",
+        "thinking_level": "high",
+        "model": "gemini-4-argon"
+      },
+      "type": "registry"
+    },
+    "opencode-v2": {
+      "default_config_options": {
+        "effort": "max",
+        "model": "opencode/deepseek-v4.1-flash-free"
+      },
+      "type": "registry"
+    },
+    "cursor": {
+      "type": "registry",
+    },
+    "junie": {
+      "type": "registry",
+    },
+    "gemini": {
+      "default_mode": "yolo",
+      "type": "registry",
+    },
+    "github-copilot-cli": {
+      "type": "registry",
+    },
+    "codex-acp": {
+      "type": "registry",
+    },
+    "kilo": {
+      "default_config_options": {
+        "mode": "code",
+        "effort": "high",
+        "model": "nvidia/minimaxai/minimax-m3",
+      },
+      "type": "registry",
+    },
+    "Hermes Agent": {
+      "default_mode": "dont_ask",
+      "type": "custom",
+      "command": "hermes",
+      "args": ["acp"],
+      "env": {},
+    },
+  },
+  "context_servers": {
+    "chrome-devtools-mcp-zed": {
+      "enabled": true,
+      "remote": false,
+      "settings": {
+        "executable_path": "/var/home/rjallais/AppImages/brave-nightly/brave-nightly",
+      },
+    },
+    "codescene": {
+      "command": "npx",
+      "args": ["-y", "@codescene/codehealth-mcp"],
+      "env": {},
+    },
+  },
+  "telemetry": {
+    "diagnostics": true,
+    "metrics": false,
+  },
+  "base_keymap": "JetBrains",
+  "icon_theme": "JetBrains New UI Icons (Dark)",
+  "agent": {
+    "dock": "left",
+    "tool_permissions": {
+      "default": "allow",
+    },
+    "inline_assistant_model": {
+      "provider": "copilot_chat",
+      "model": "gpt-5-mini",
+    },
+    "default_profile": "write",
+    "default_model": {
+      "effort": "max",
+      "enable_thinking": true,
+      "provider": "opencode",
+      "model": "zen/deepseek-v4-flash",
+    },
+    "model_parameters": [],
+  },
+  "ui_font_size": 16,
+  "buffer_font_size": 15,
+  "theme": {
+    "mode": "system",
+    "light": "One Light",
+    "dark": "JetBrains Islands Dark",
+  },
+}

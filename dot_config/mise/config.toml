@@ -1,109 +1,117 @@
 [tools]
-"http:antigravity" = { version = "latest", url = "https://storage.googleapis.com/antigravity-public/antigravity-cli/{{ version }}-5288553236791296/{{os(linux='linux', macos='darwin')}}-{{arch(x64='x64', arm64='arm')}}/cli_{{os(linux='linux', macos='mac')}}_{{arch(x64='x64', arm64='arm64')}}.tar.gz", version_list_url = "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_amd64.json", version_json_path = ".version" }
 aqua = "latest"
-
-"aqua:Wilfred/difftastic" = "latest"
 "aqua:exercism/cli" = "latest"
 "aqua:iawia002/lux" = "latest"
-"aqua:microsoft/edit" = "2.0.0"
 "aqua:nats-io/natscli" = "latest"
-"aqua:topgrade-rs/topgrade" = "latest"
 "aqua:twistedpair/google-cloud-sdk" = "latest"
-"aqua:zyedidia/micro" = "latest"
-
+argc = "latest"
 atuin = "latest"
-bat = "latest"
+aube = "latest"
+azure-cli = "latest"
 bitwarden = "latest"
 bottom = "latest"
 bun = "latest"
-carapace = "latest"
 cargo-binstall = "latest"
 chezmoi = "latest"
-cmake = "latest"
+claude-code = "latest"
+cmake = "4.5.0"
 codex = "latest"
 conan = "latest"
 "conda:ruby" = "latest"
+copilot = "latest"
 cosign = "latest"
+crush = "latest"
 delta = "latest"
+difftastic = "latest"
+doctl = "latest"
 dust = "latest"
+edit = "latest"
+entire = "latest"
 eza = "latest"
-fastfetch = "latest"
 fd = "latest"
-fzf = "latest"
+fnox = "latest"
 github-cli = "latest"
+glab = "latest"
 
 "github:AdguardTeam/AdGuardHome" = "latest"
-"github:JetBrains/junie" = "latest"
 "github:Valkyrie00/bold-brew" = "latest"
-"github:danielmiessler/fabric" = "latest"
+"github:aaif-goose/goose" = "latest"
 "github:abishekvashok/cmatrix" = "latest"
-"github:charmbracelet/crush" = "latest"
+"github:danielmiessler/fabric" = "latest"
 "github:lucasgelfond/zerobrew" = "latest"
+"github:neul-labs/stout" = "latest"
 "github:pkgforge/soar" = "latest"
 "github:plyght/wax" = { version = "latest", os = ["linux", "macos"] }
-"github:uutils/coreutils" = "latest"
-"github:uutils/diffutils" = "latest"
-"github:uutils/findutils" = "latest"
+"github:rjallais/ubrew" = "latest"
+"github:webull-inc/webull-openapi-cli" = "1.0.8"
 "github:xmake-io/xmake" = "latest"
 
 go = "latest"
-"go:github.com/hanthor/bluefin-cli" = "latest"
+"go:github.com/go-delve/delve/cmd/dlv" = { version = "latest", os = ["linux", "macos"] }
+"go:github.com/tuna-os/bluefin-cli" = "latest"
 "go:golang.org/x/tools/gopls" = "latest"
 gup = "latest"
 hyperfine = "latest"
+java = "latest"
+julia = "latest"
 lsd = "latest"
+micro = "latest"
 node = "latest"
-
-"npm:@anthropic-ai/claude-code" = "latest"
-"npm:@github/copilot" = "latest"
-"npm:@google/gemini-cli" = "latest"
-"npm:@kilocode/cli" = "latest"
-"github:Kilo-Org/kilocode" = "latest"
-
-opencode = "latest"
-
-"pipx:tldr" = "latest"
-"pipx:trash-cli" = "latest"
-
+odin = "latest"
 pnpm = "latest"
 qwen-code = "latest"
+rclone = "latest"
 ripgrep = "latest"
+ruff = "0.17.5"
 rust = "latest"
 sd = "latest"
-sqlite = "latest"
-starship = "latest"
+sqlite = "3.54.1"
 television = "latest"
+topgrade = "latest"
 usage = "latest"
 uv = "latest"
 yt-dlp = "latest"
-zoxide = "latest"
-amp = "latest"
-cursor = "latest"
+zig = "0.17.1"
 
+amp = { version = "latest", allow_builds = ["@ampcode/cli"] }
+"npm:9router" = "latest"
+"npm:@google/gemini-cli" = "latest"
+"npm:@google/stitch" = "latest"
+"npm:@jetbrains/junie" = "latest"
+"npm:@kilocode/cli" = "latest"
+"npm:@microsoft/inshellisense" = "latest"
+"npm:@opencode/cli" = { version = "latest", allow_builds = ["@opencode/cli"] }
+"npm:freebuff" = { version = "latest", trust_policy_excludes = ["freebuff@0.2.36"] }
 
-"cargo:dysk" = { version = "latest", os = ["linux"] }
+"pipx:graphifyy" = "latest"
+"pipx:numpy" = "latest"
+"pipx:tldr" = "latest"
+"pipx:trash-cli" = "latest"
+"pypi:max" = "latest"
+"pypi:mojo" = "latest"
+"pypi:mojo-compiler" = "latest"
+
 "cargo:bacon" = { version = "latest", os = ["linux"] }
-"go:github.com/go-delve/delve/cmd/dlv" = { version = "latest", os = ["linux", "macos"] }
+"cargo:dysk" = { version = "latest", os = ["linux"] }
+"cargo:kombrucha" = "0.2.3"
 
-"github:ajeetdsouza/zoxide" = { version = "latest", os = ["windows"] }
-"aqua:sharkdp/bat" = { version = "latest", os = ["windows"] }
+"aqua:jetify-com/devbox" = "latest"
 "aqua:BurntSushi/ripgrep" = { version = "latest", os = ["windows"] }
+"aqua:carapace-sh/carapace-bin" = { version = "latest", os = ["windows"] }
+"aqua:nushell/nushell" = { version = "latest", os = ["windows"] }
+"aqua:sharkdp/bat" = { version = "latest", os = ["windows"] }
 "aqua:sharkdp/fd" = { version = "latest", os = ["windows"] }
 "aqua:starship/starship" = { version = "latest", os = ["windows"] }
-"aqua:carapace-sh/carapace-bin" = { version = "latest", os = ["windows"] }
-aube = "latest"
-rclone = "latest"
-"cargo:kombrucha" = "0.2.3"
-"aqua:jetify-com/devbox" = "latest"
-"github:aaif-goose/goose" = "latest"
-copilot = "latest"
+"github:ajeetdsouza/zoxide" = { version = "latest", os = ["windows"] }
 
 [settings]
 experimental = true
+aqua.github_attestations = false
 idiomatic_version_file_enable_tools = []
+minimum_release_age = "0s"
 
 [settings.npm]
-package_manager = "pnpm"
+package_manager = "aube"
 
 [settings.cargo]
 binstall = true
@@ -113,3 +121,6 @@ compile = false
 
 [settings.ruby]
 compile = false
+
+[settings.github]
+credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'

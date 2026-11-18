@@ -1,18 +1,19 @@
-# env.nu
-#
-# Installed by:
-# version = "0.108.0"
-#
-# Previously, environment variables were typically configured in `env.nu`.
-# In general, most configuration can and should be performed in `config.nu`
-# or one of the autoload directories.
-#
-# This file is generated for backwards compatibility for now.
-# It is loaded before config.nu and login.nu
-#
-# See https://www.nushell.sh/book/configuration.html
-#
-# Also see `help config env` for more options.
-#
-# You can remove these comments if you want or leave
-# them for future reference.
+# env.nu - Windows Nushell environment configuration
+
+$env.NINEROUTER_URL = "http://localhost:20128"
+
+let home = ($env.HOME? | default $env.USERPROFILE?)
+if $home != null {
+    let fnox_cfg = ($home | path join ".config" "fnox" "config.toml")
+    let fnox_age = ($home | path join ".config" "fnox" "age.txt")
+    if (which fnox | is-not-empty) and ($fnox_cfg | path exists) and (($fnox_age | path exists) or ($env.FNOX_AGE_KEY? != null) or ($env.FNOX_AGE_KEY_FILE? != null)) {
+        let res = (^fnox -c $fnox_cfg export -f json --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY | complete)
+        if $res.exit_code == 0 and ($res.stdout | str trim | is-not-empty) {
+            let parsed = (try { $res.stdout | from json } catch { {} })
+            let secrets = ($parsed.secrets? | default {})
+            if ($secrets | describe | str starts-with "record") and ($secrets | is-not-empty) {
+                load-env $secrets
+            }
+        }
+    }
+}

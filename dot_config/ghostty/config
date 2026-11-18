@@ -1,0 +1,7 @@
+# --- bluefin-cli managed start ---
+theme = light:catppuccin-latte,dark:catppuccin-mocha
+window-padding-x = 8
+window-padding-y = 8
+cursor-style = block
+font-family = 0xProto Nerd Font
+# --- bluefin-cli managed end ---

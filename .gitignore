@@ -14,7 +14,15 @@ tmp/
 temp/
 *.tmp
 
-# Local configuration
+# Local configuration & secrets
 .env
-.env.local
-.aider*
+.env.*
+*.local.toml
+dot_config/fnox/age.txt
+*age*.txt
+*.key
+
+# Tool state / local runtime data
+.crush/
+dot_config/bluefin-cli/countme.json
+dot_config/fish/fish_variables*

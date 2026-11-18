@@ -1,10 +1,16 @@
-# Files to ignore when applying dotfiles (not copied to ~)
+# Files and directories to ignore when applying dotfiles (not copied to ~)
 
 README.md
 LICENSE
+Brewfile
 .git/
 .github/
+.crush/
+system/
 *.example
+dot_config/fnox/age.txt
+dot_config/bluefin-cli/countme.json
+dot_config/fish/fish_variables*
 {{- if eq .chezmoi.os "windows" }}
 dot_bash_profile
 dot_bashrc
@@ -12,7 +18,17 @@ dot_profile
 dot_config/private_fish/
 dot_config/nushell/
 dot_config/wax/
+dot_config/ghostty/
+dot_config/bluefin-cli/
+dot_config/environment.d/
+dot_config/systemd/
+dot_config/brew.env
 dot_local/share/mise/plugins/cursor/
 {{- else }}
 AppData/
+{{- if ne .chezmoi.os "linux" }}
+dot_config/environment.d/
+dot_config/systemd/
+dot_config/bluefin-cli/
+{{- end }}
 {{- end }}

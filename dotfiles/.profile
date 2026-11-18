@@ -31,24 +31,17 @@ fi
 # Flatpak XDG directories
 export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 
-# Source .bashrc if running bash
-if [ -n "${BASH_VERSION:-}" ]; then
-    if [ -f "$HOME/.bashrc" ]; then
-        . "$HOME/.bashrc"
-    fi
+# Homebrew (Linuxbrew / macOS) — add to PATH before .bashrc checks tools
+if [ -x "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+elif [ -x "/opt/homebrew/bin/brew" ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
 # Load mise shims if available
 if command -v mise > /dev/null 2>&1; then
     export SHELL_TYPE=bash
     eval "$(mise activate bash --shims)"
-fi
-
-# Homebrew (Linuxbrew / macOS) — add to PATH at shell init
-if [ -x "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-elif [ -x "/opt/homebrew/bin/brew" ]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
 if [ -f "$HOME/.cargo/env" ]; then
@@ -61,6 +54,13 @@ if [ -d "/opt/ubrew/prefix/bin" ]; then
         *":/opt/ubrew/prefix/bin:"*) ;;
         *) export PATH="/opt/ubrew/prefix/bin:$PATH" ;;
     esac
+fi
+
+# Source .bashrc if running bash
+if [ -n "${BASH_VERSION:-}" ]; then
+    if [ -f "$HOME/.bashrc" ]; then
+        . "$HOME/.bashrc"
+    fi
 fi
 
 # Source Gemini environment variables (project/location)

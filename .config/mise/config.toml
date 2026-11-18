@@ -107,7 +107,7 @@ amp = { version = "latest", allow_builds = ["@ampcode/cli"] }
 "aqua:jetify-com/devbox" = "latest"
 "aqua:BurntSushi/ripgrep" = { version = "latest", os = ["windows"] }
 "aqua:carapace-sh/carapace-bin" = { version = "latest", os = ["windows"] }
-"aqua:nushell/nushell" = { version = "latest", os = ["windows"] }
+"aqua:nushell/nushell" = { version = "latest", os = ["windows", "macos"] }
 "aqua:sharkdp/bat" = { version = "latest", os = ["windows"] }
 "aqua:sharkdp/fd" = { version = "latest", os = ["windows"] }
 "aqua:starship/starship" = { version = "latest", os = ["windows"] }
@@ -146,17 +146,17 @@ credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
 "~/.config/fnox/config.toml" = { source = "../../dotfiles/.config/fnox/config.toml" }
 "~/.config/micro/settings.json" = { source = "../../dotfiles/.config/micro/settings.json" }
 "~/.config/micro/bindings.json" = { source = "../../dotfiles/.config/micro/bindings.json" }
-"~/.config/television/config.toml" = { source = "../../dotfiles/.config/television/config.toml" }
 "~/.config/delta/settings.json" = { source = "../../dotfiles/.config/delta/settings.json" }
 
 [tasks.nu-autoload]
 description = "Generate Nushell vendor/autoload integration scripts"
 run = """
+script="{{ get_env(name='MISE_CONFIG_DIR', default=config_root ~ '/.config/mise') }}/scripts/nu-autoload.nu"
 if command -v nu >/dev/null 2>&1; then
-    nu "{{ config_root }}/scripts/nu-autoload.nu"
+    nu "$script"
 elif [ -x /home/linuxbrew/.linuxbrew/bin/nu ]; then
-    /home/linuxbrew/.linuxbrew/bin/nu "{{ config_root }}/scripts/nu-autoload.nu"
+    /home/linuxbrew/.linuxbrew/bin/nu "$script"
 else
-    mise exec aqua:nushell/nushell -- nu "{{ config_root }}/scripts/nu-autoload.nu"
+    mise exec aqua:nushell/nushell -- nu "$script"
 fi
 """

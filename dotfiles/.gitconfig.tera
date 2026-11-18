@@ -2,10 +2,10 @@
 
 [user]
 {%- if vars.git_email_default %}
-    email = {{ vars.git_email_default }}
+    email = "{{ vars.git_email_default | replace(from="\\", to="\\\\") | replace(from='"', to="\\\"") }}"
 {%- endif %}
 {%- if vars.name %}
-    name = {{ vars.name }}
+    name = "{{ vars.name | replace(from="\\", to="\\\\") | replace(from='"', to="\\\"") }}"
 {%- endif %}
     signingkey = ~/.ssh/id_ed25519_signing.pub
     useconfigonly = true

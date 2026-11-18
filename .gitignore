@@ -23,6 +23,7 @@ dotfiles/.config/fnox/age.txt
 *.key
 
 # Tool state / local runtime data
+.aider*
 .crush/
 dotfiles/.config/bluefin-cli/countme.json
 dotfiles/.config/fish/fish_variables*

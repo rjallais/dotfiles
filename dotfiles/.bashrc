@@ -36,9 +36,10 @@ if command -v rg &> /dev/null; then
     alias grep='rg'
 fi
 
-if command -v fd &> /dev/null; then
-    alias find='fd'
-fi
+# Disabled: fd flags differ from POSIX find (use `fd` directly)
+# if command -v fd &> /dev/null; then
+#     alias find='fd'
+# fi
 
 # Common aliases
 alias ..='cd ..'
@@ -71,7 +72,7 @@ fi
 # Add mise shims to PATH (idempotent)
 _mise_shims_dir="$HOME/.local/share/mise/shims"
 case ":$PATH:" in
-  *":$_mise_shims_dir:") :;;
+  *":$_mise_shims_dir:"*) :;;
   *)
     if [ -d "$_mise_shims_dir" ]; then
       export PATH="$_mise_shims_dir:$PATH"
@@ -87,7 +88,7 @@ fi
 # nanobrew (guarded — only if mounted/present)
 if [ -d "/opt/nanobrew/prefix/bin" ]; then
   case ":$PATH:" in
-    *":/opt/nanobrew/prefix/bin:") ;;
+    *":/opt/nanobrew/prefix/bin:"*) ;;
     *) export PATH="/opt/nanobrew/prefix/bin:$PATH" ;;
   esac
 fi
@@ -95,7 +96,7 @@ fi
 # ubrew (guarded)
 _ubrew_bin_dir="/opt/ubrew/prefix/bin"
 case ":$PATH:" in
-  *":$_ubrew_bin_dir:") :;;
+  *":$_ubrew_bin_dir:"*) :;;
   *)
     if [ -d "$_ubrew_bin_dir" ]; then
       export PATH="$_ubrew_bin_dir:$PATH"

@@ -52,8 +52,6 @@ format = '[$symbol ]($style)'
 description = 'Get container name'
 command = "sh -lc 'bat /run/.containerenv | rg -i name | cut -d \"\\\"\" -f2'"
 when = "sh -lc '[ -f /run/.containerenv ]'"
-files = ['/run/.containerenv']
-ignore_timeout = true
 style = 'bold red dimmed'
 format = '[\[$output\]]($style)'
 

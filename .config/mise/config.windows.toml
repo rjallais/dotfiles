@@ -3,6 +3,7 @@
 [dotfiles]
 "~/AppData/Roaming/nushell/config.nu" = { source = "../../dotfiles/AppData/Roaming/nushell/config.nu" }
 "~/AppData/Roaming/nushell/env.nu" = { source = "../../dotfiles/AppData/Roaming/nushell/env.nu" }
+"~/AppData/Local/television/config/config.toml" = { source = "../../dotfiles/.config/television/config.toml" }
 
 [bootstrap.packages]
 "winget:Nushell.Nushell" = "latest"
@@ -13,4 +14,4 @@ post-tools = { run = "mise run nu-autoload" }
 
 [tasks.nu-autoload]
 description = "Generate Nushell vendor/autoload integration scripts on Windows"
-run = 'mise exec aqua:nushell/nushell -- nu "{{ config_root }}\scripts\nu-autoload.nu"'
+run = 'mise exec aqua:nushell/nushell -- nu "{{ get_env(name="MISE_CONFIG_DIR", default=config_root ~ "\\.config\\mise") }}\scripts\nu-autoload.nu"'

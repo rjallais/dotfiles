@@ -81,47 +81,59 @@ mkdir ($nu.data-dir | path join "vendor" "autoload")
 const vendor_autoload = ($nu.data-dir | path join "vendor" "autoload")
 const mise_init = ($vendor_autoload | path join "mise.nu")
 const starship_init = ($vendor_autoload | path join "starship.nu")
-const zoxide_init = ($vendor_autoload | path join "zoxide.nu")
-const atuin_init = ($vendor_autoload | path join "atuin.nu")
-const brew_init = ($vendor_autoload | path join "brew.nu")
-const uutils_prefer = ($nu.default-config-dir | path join "uutils-prefer.nu")
+const uutils_prefer_path = ($nu.default-config-dir | path join "uutils-prefer.nu")
+const uutils_prefer = if ($uutils_prefer_path | path exists) { $uutils_prefer_path } else { null }
 const argc_completions_root = ($nu.home-dir | path join ".local" "share" "argc-completions")
 const argc_completions_init = ($vendor_autoload | path join "argc-completions.nu")
 
-def --env ensure_mise_activation [] {
+def write-atomic-nu [target: path, content: string] {
+    let tmp = $"($target).tmp.($nu.pid)"
+    $content | save --force $tmp
+    mv --force $tmp $target
+}
+
+def ensure_mise_activation [] {
     if ((which mise | length) == 0) {
         return
     }
 
     if (not ($mise_init | path exists)) {
-        ^mise activate nu | save --force $mise_init
+        let out = (^mise activate nu | complete)
+        if $out.exit_code == 0 and ($out.stdout | str trim | is-not-empty) {
+            write-atomic-nu $mise_init $out.stdout
+        }
     }
-
-    source $mise_init
 }
 
-def --env ensure_starship_activation [] {
+def resolve_starship_bin [starship_path: string] {
+    if ($starship_path | str contains "mise/shims") and (which mise | is-not-empty) {
+        let mw = (^mise which starship | complete)
+        if $mw.exit_code == 0 and ($mw.stdout | str trim | is-not-empty) {
+            return ($mw.stdout | str trim | path expand)
+        }
+    }
+    $starship_path | path expand
+}
+
+def ensure_starship_activation [] {
     let starship_path = (which starship | get path.0?)
     if $starship_path == null {
         return
     }
 
+    let real_starship = (resolve_starship_bin $starship_path)
     # Regenerate the autoload when the binary path is missing or when the
-    # currently-generated script still references a different install location
-    # (e.g. an old mise install).
+    # currently-generated script still references a different install location.
     let needs_regen = (
         (not ($starship_init | path exists))
-        or (try { open --raw $starship_init | str contains $starship_path } catch { false } | not $in)
+        or (try { (open --raw $starship_init | str contains $real_starship) or (open --raw $starship_init | str contains $starship_path) } catch { false } | not $in)
     )
     if $needs_regen {
-        try {
-            ^$starship_path init nu | save --force $starship_init
-        } catch {
-            return
+        let out = (^$starship_path init nu | complete)
+        if $out.exit_code == 0 and ($out.stdout | str trim | is-not-empty) {
+            write-atomic-nu $starship_init $out.stdout
         }
     }
-
-    source $starship_init
 }
 
 def --env normalize_wsl_mise_paths [] {
@@ -151,7 +163,7 @@ if ('/opt/ubrew/prefix/bin' | path exists) {
 }
 normalize_wsl_mise_paths
 
-if ($uutils_prefer | path exists) { source $uutils_prefer }
+source $uutils_prefer
 
 # Homebrew/Linuxbrew performance optimizations (non-Windows)
 if (sys host | get name) != "Windows" {
@@ -193,24 +205,25 @@ def --env normalize_path [] {
     }
     ensure_homebrew_path
     ensure_ubrew_path
+    let home = ($env.HOME? | default $nu.home-dir)
+    let mise_installs = (($env.MISE_DATA_DIR? | default ($home | path join ".local" "share" "mise")) | path join "installs")
     let path_list = ($env.PATH)
+    let mise_active = ($path_list | where {|p| $p | str starts-with $"($mise_installs)/" })
     let usr_bin = '/usr/bin'
-    let mise_shims = $"($env.HOME)/.local/share/mise/shims"
+    let mise_shims = $"($home)/.local/share/mise/shims"
     let ubrew_bin = '/opt/ubrew/prefix/bin'
     let brew_bin = '/home/linuxbrew/.linuxbrew/bin'
     let brew_sbin = '/home/linuxbrew/.linuxbrew/sbin'
 
-    # Priority: system /usr/bin first, then mise shims, then Homebrew's linked
-    # bin/sbin, then ubrew's registry mirror. brew's links always track the keg
-    # brew itself upgrades, so they never go stale; ubrew's mirror can lag when
-    # brew bumps a formula, so it must stay *after* brew's bin to avoid shadowing.
+    # Priority: keep active mise-installed tool paths first, then system /usr/bin,
+    # mise shims, Homebrew's linked bin/sbin, and ubrew's registry mirror.
     let priority = (
         [$usr_bin $mise_shims $brew_bin $brew_sbin $ubrew_bin]
         | where {|p| $p | path exists }
     )
-    let rest_path = ($path_list | where {|p| $p not-in $priority})
+    let rest_path = ($path_list | where {|p| ($p not-in $mise_active) and ($p not-in $priority) })
 
-    $env.PATH = ($priority | append $rest_path | uniq)
+    $env.PATH = ($mise_active | append $priority | append $rest_path | uniq)
 }
 normalize_path
 
@@ -219,16 +232,13 @@ def --wrapped cat [...files: path]: [nothing -> string, any -> string] {
         $in | to text
     } else {
         $files
-        | each { |file| open $file | to text }
+        | each { |file| open --raw $file | to text }
         | str join ""
     }
 }
 
 ensure_mise_activation
 ensure_starship_activation
-if ($zoxide_init | path exists) { source $zoxide_init }
-if ($atuin_init | path exists) { source $atuin_init }
-if ($brew_init | path exists) { source $brew_init }
 
 # argc-completions setup (replaces carapace; auto-loaded from vendor/autoload)
 def --env ensure_argc_completions [] {
@@ -238,8 +248,15 @@ def --env ensure_argc_completions [] {
     $env.ARGC_COMPLETIONS_ROOT = $argc_completions_root
     $env.ARGC_COMPLETIONS_PATH = ($argc_completions_root + '/completions/linux:' + $argc_completions_root + '/completions')
     $env.PATH = ($env.PATH | prepend ($argc_completions_root + '/bin'))
-    if (not ($argc_completions_init | path exists)) and (which argc | is-not-empty) {
-        try { ^argc --argc-completions nushell | save --force $argc_completions_init }
+    let argc_missing_or_stub = (
+        (not ($argc_completions_init | path exists))
+        or (try { (open --raw $argc_completions_init | str trim | str starts-with "#") and not (open --raw $argc_completions_init | str contains "extern ") } catch { false })
+    )
+    if $argc_missing_or_stub and (which argc | is-not-empty) {
+        let out = (^argc --argc-completions nushell | complete)
+        if $out.exit_code == 0 and ($out.stdout | str trim | is-not-empty) {
+            write-atomic-nu $argc_completions_init $out.stdout
+        }
     }
 }
 
@@ -285,13 +302,61 @@ $env.GOOGLE_CLOUD_LOCATION = "global"
 
 # Linux-only: Fedora CoreOS system extension management
 # These functions require sudo, systemctl, and Linux paths
+def sudo-download-install [url: string, dest: path] {
+    let tmp = (^mktemp | str trim)
+    let cleanup = { ^rm -f $tmp | complete | ignore }
+    try {
+        let res = (^curl --silent --fail --location $url -o $tmp | complete)
+        if $res.exit_code != 0 or (^test -s $tmp | complete).exit_code != 0 {
+            error make { msg: $"Failed to download ($url): ($res.stderr | str trim)" }
+        }
+        ^sudo install -m 0644 -o 0 -g 0 $tmp $dest
+    } catch { |err|
+        do $cleanup
+        error make $err
+    }
+    do $cleanup
+}
+
+def host-os-version-id [] {
+    if not ("/etc/os-release" | path exists) {
+        return ""
+    }
+    try {
+        open --raw "/etc/os-release"
+        | lines
+        | where {|l| $l | str starts-with "VERSION_ID=" }
+        | get --optional 0
+        | default ""
+        | str replace "VERSION_ID=" ""
+        | str trim --char '"'
+    } catch { "" }
+}
+
+def sysext-version-key [sname: string, full_path: string] {
+    let base = ($full_path | path basename | str replace $"($sname)-" "" | str replace ".raw" "")
+    let ver = (
+        $base
+        | split row "-"
+        | get --optional 0
+        | default ""
+        | split row "."
+        | each {|seg|
+            let digits = ($seg | parse --regex '^(\d+)' | get --optional 0.capture0 | default "0")
+            $digits | fill -a r -c "0" -w 8
+        }
+        | str join "."
+    )
+    $"($ver)|($full_path)"
+}
+
 def install-sysext-from [sysext: string, url: string] {
     let dir = $"/etc/sysupdate.($sysext).d"
-    let conf = $"/($dir)/($sysext).conf"
+    let conf = $"($dir)/($sysext).conf"
 
     ^sudo install -d -m 0755 -o 0 -g 0 $dir
     ^sudo restorecon -RFv $dir
-    ^curl --silent --fail --location $"($url)/($sysext).conf" | ^sudo tee $conf | ignore
+    sudo-download-install $"($url)/($sysext).conf" $conf
     ^sudo /usr/lib/systemd/systemd-sysupdate update --component $sysext
 }
 
@@ -325,7 +390,7 @@ def install-sysexts-manager [
     let target = $"/var/lib/extensions.d/($name)"
 
     ^sudo install -d -m 0755 -o 0 -g 0 /var/lib/extensions /var/lib/extensions.d /run/extensions
-    ^curl --silent --fail --location $"($url)/($name)" | ^sudo tee $target | ignore
+    sudo-download-install $"($url)/($name)" $target
     ^sudo ln -snf $target /var/lib/extensions/sysexts-manager.raw
     ^sudo restorecon -RFv /var/lib/extensions /var/lib/extensions.d /run/extensions
     ^sudo systemctl enable systemd-sysext.service
@@ -342,12 +407,33 @@ def sysexts-update-all [
     --dry-run             # only show, don't change anything
     --verbose (-v)        # pass -v to sysexts-manager
 ] {
+    if $keep < 1 {
+        error make { msg: "--keep must be at least 1" }
+    }
+
     let runner = if (which run0 | is-not-empty) { "run0" } else { "sudo" }
     let vflag = if $verbose { ["-v"] } else { [] }
     let service_exists = ((^systemctl list-unit-files sysexts-manager.service | complete).exit_code == 0)
+    let unit_state = if $service_exists {
+        ((^systemctl is-enabled sysexts-manager.service | complete).stdout | str trim)
+    } else { "" }
+    let was_masked = ($unit_state | str starts-with "masked")
+    let was_active = if $service_exists {
+        ((^systemctl is-active --quiet sysexts-manager.service | complete).exit_code == 0)
+    } else { false }
+    let should_manage_service = (not $dry_run) and $service_exists and (not $was_masked)
 
-    if (not $dry_run) and $service_exists {
+    if $should_manage_service {
         ^$runner systemctl mask --now --runtime sysexts-manager.service | complete | ignore
+    }
+
+    let restore_service = {
+        if $should_manage_service {
+            ^$runner systemctl unmask --runtime sysexts-manager.service | complete | ignore
+            if $was_active {
+                ^$runner systemctl start sysexts-manager.service | complete | ignore
+            }
+        }
     }
 
     try {
@@ -371,19 +457,30 @@ def sysexts-update-all [
         } else {
             ^$runner systemctl restart systemd-sysext.service
         }
-    } finally {
-        if (not $dry_run) and $service_exists {
-            ^$runner systemctl unmask --runtime sysexts-manager.service | complete | ignore
-            ^$runner systemctl start sysexts-manager.service | complete | ignore
-        }
+    } catch { |err|
+        do $restore_service
+        error make $err
     }
+    do $restore_service
+
+    let os_ver = (host-os-version-id)
+    let rel_tag = if ($os_ver | is-not-empty) { $"-($os_ver)-" } else { "" }
 
     print $"==> pruning old images, keep ($keep) newest per sysext..."
-    if (not $dry_run) and (("/var/lib/extensions/sysexts-manager.raw" | path type) == "symlink") {
+    let mgr_link = "/var/lib/extensions/sysexts-manager.raw"
+    if (not $dry_run) and (($mgr_link | path type) == "symlink") {
         let mgr_matches = (glob "/var/lib/extensions.d/sysexts-manager-*.raw")
-        if ($mgr_matches | is-not-empty) {
-            let newest_mgr = (ls ...$mgr_matches | sort-by modified | get name | last)
-            ^$runner ln -snf $newest_mgr /var/lib/extensions/sysexts-manager.raw
+        let compat_mgr = if ($rel_tag | is-not-empty) {
+            $mgr_matches | where {|p| ($p | path basename | str contains $rel_tag) }
+        } else {
+            $mgr_matches
+        }
+        if ($compat_mgr | is-not-empty) {
+            let newest_mgr = ($compat_mgr | sort-by {|p| sysext-version-key "sysexts-manager" $p } | last)
+            let cur_mgr = (try { $mgr_link | path expand } catch { "" })
+            if ($cur_mgr | is-empty) or ($cur_mgr not-in ($compat_mgr | each {|p| $p | path expand })) or (($newest_mgr | path expand) != $cur_mgr) {
+                ^$runner ln -snf $newest_mgr $mgr_link
+            }
         }
     }
 
@@ -401,16 +498,28 @@ def sysexts-update-all [
 
     for sname in $names {
         let matches = (glob $"/var/lib/extensions.d/($sname)-*.raw")
-        let files = if ($matches | is-not-empty) {
-            ls ...$matches | sort-by modified | get name | path basename
+        let link_path = $"/var/lib/extensions/($sname).raw"
+        let active_target = if ($link_path | path type) == "symlink" {
+            try { $link_path | path expand } catch { "" }
+        } else { "" }
+        let active_kept = ($active_target | is-not-empty) and ($active_target in ($matches | each {|p| $p | path expand }))
+        let pool = if $active_kept {
+            $matches | where {|p| ($p | path expand) != $active_target }
         } else {
-            []
+            $matches
         }
-        let n = ($files | length)
-        if $n > $keep {
-            let stale = ($files | take ($n - $keep))
-            for f in $stale {
-                let full = $"/var/lib/extensions.d/($f)"
+        let extra_keep = if $active_kept { $keep - 1 } else { $keep }
+        let n_pool = ($pool | length)
+        if $n_pool > $extra_keep {
+            let ranked = (
+                $pool
+                | sort-by {|p|
+                    let compat = if ($rel_tag | is-not-empty) and ($p | path basename | str contains $rel_tag) { "1" } else { "0" }
+                    $"($compat)|(sysext-version-key $sname $p)"
+                }
+            )
+            let stale = ($ranked | take ($n_pool - $extra_keep))
+            for full in $stale {
                 if $dry_run {
                     print $"[dry-run] would delete: ($full)"
                 } else {
@@ -419,7 +528,7 @@ def sysexts-update-all [
                 }
             }
         } else {
-            print $"($sname): ($n) images, nothing to prune"
+            print $"($sname): ($matches | length) images, nothing to prune"
         }
     }
 
@@ -439,7 +548,7 @@ $env.config.hooks.display_output = { if (term size).columns >= 100 { table -e } 
 def --wrapped b [...args: string] {
     if (which bat | is-not-empty) { ^bat --paging=auto ...$args } else { open ...$args }
 }
-def fcd [] {
+def --env fcd [] {
     if (which fd | is-not-empty) and (which fzf | is-not-empty) {
         let target = (^fd --type d --hidden --exclude .git | ^fzf --preview '^eza --tree --level=2 {}' | str trim)
         if ($target | is-not-empty) { cd $target }

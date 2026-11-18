@@ -82,10 +82,10 @@ if test -d /home/linuxbrew/.linuxbrew
     end
 end
 
-# Deduplicate PATH while keeping only existing directories
+# Deduplicate PATH while keeping non-empty entries in first-seen order
 set -l unique_paths
 for path_item in $PATH
-    if test -d $path_item; and not contains $path_item $unique_paths
+    if test -n "$path_item"; and not contains $path_item $unique_paths
         set unique_paths $unique_paths $path_item
     end
 end

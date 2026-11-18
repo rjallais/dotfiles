@@ -1,7 +1,7 @@
 [Unit]
 Description=Zen Filter — system-wide MITM ad-blocker/privacy proxy (headless)
 PartOf=graphical-session.target
-After=graphical-session.target
+ConditionFileIsExecutable=%h/.local/bin/zen-filter-bg
 
 [Service]
 Type=simple
@@ -10,4 +10,4 @@ Restart=on-failure
 RestartSec=3
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

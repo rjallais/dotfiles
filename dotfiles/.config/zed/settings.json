@@ -111,7 +111,7 @@
   "agent": {
     "dock": "left",
     "tool_permissions": {
-      "default": "allow",
+      "default": "confirm",
     },
     "inline_assistant_model": {
       "provider": "copilot_chat",

@@ -11,5 +11,5 @@ background = #161222
 selection-background = #352a4e
 selection-foreground = #ffffff
 
-# Shell: Use Nushell
-command = /var/home/linuxbrew/.linuxbrew/bin/nu
+# Shell: Use Nushell if available, otherwise fall back to login shell
+command = /bin/sh -lc 'if command -v nu >/dev/null 2>&1; then exec nu; elif [ -x /home/linuxbrew/.linuxbrew/bin/nu ]; then exec /home/linuxbrew/.linuxbrew/bin/nu; else exec "${SHELL:-/bin/bash}"; fi'

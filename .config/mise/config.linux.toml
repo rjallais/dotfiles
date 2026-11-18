@@ -6,7 +6,7 @@
 "~/.config/zed/settings.json" = { source = "../../dotfiles/.config/zed/settings.json" }
 "~/.config/bluefin-cli/config.yaml" = { source = "../../dotfiles/.config/bluefin-cli/config.yaml" }
 "~/.config/bluefin-cli/shell.json" = { source = "../../dotfiles/.config/bluefin-cli/shell.json" }
-"~/.config/brew.env" = { source = "../../dotfiles/.config/brew.env" }
+"~/.config/homebrew/brew.env" = { source = "../../dotfiles/.config/brew.env" }
 "~/.config/environment.d/10-local-bin.conf" = { source = "../../dotfiles/.config/environment.d/10-local-bin.conf" }
 "~/.config/environment.d/blur-my-shell.conf" = { source = "../../dotfiles/.config/environment.d/blur-my-shell.conf" }
 "~/.config/environment.d/intel-gtk-fix.conf" = { source = "../../dotfiles/.config/environment.d/intel-gtk-fix.conf" }
@@ -176,7 +176,7 @@ mode = "0644"
 "flatpak-user:io.github.yelanxin.OxiTide" = "latest"
 
 [bootstrap.hooks]
-post-dotfiles = { run = "systemctl --user daemon-reload >/dev/null 2>&1 || true" }
+post-dotfiles = { run = "systemctl --user daemon-reload || echo 'Warning: systemctl --user daemon-reload failed; run it from your active user session to load updated units.' >&2" }
 
 [tasks.brew-ublue]
 description = "Install Universal Blue tap casks (custom cask DSL not handled by mise's native cask driver)"

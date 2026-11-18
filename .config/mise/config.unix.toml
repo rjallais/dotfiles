@@ -11,6 +11,7 @@
 "~/.config/nushell/config.nu" = { source = "../../dotfiles/.config/nushell/config.nu" }
 "~/.config/nushell/env.nu" = { source = "../../dotfiles/.config/nushell/env.nu" }
 "~/.config/nushell/uutils-prefer.nu" = { source = "../../dotfiles/.config/nushell/uutils-prefer.nu" }
+"~/.config/television/config.toml" = { source = "../../dotfiles/.config/television/config.toml" }
 "~/.config/wax/Waxfile.toml" = { source = "../../dotfiles/.config/wax/Waxfile.toml" }
 
 [bootstrap.repos]
@@ -22,3 +23,13 @@ zsh = true
 
 [bootstrap.hooks]
 post-tools = { run = "mise run nu-autoload" }
+
+[tasks.fish-plugins]
+description = "Install Fisher and sync Fish plugins from fish_plugins"
+run = """
+if ! command -v fish >/dev/null 2>&1; then
+    echo "Fish not found; skipping fisher plugin sync"
+    exit 0
+fi
+fish -c 'if not functions -q fisher; curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher; end; fisher update'
+"""

@@ -4,21 +4,24 @@ mkdir ($nu.data-dir | path join "vendor/autoload")
 
 const vendor_autoload = ($nu.data-dir | path join "vendor" "autoload")
 const mise_init = ($vendor_autoload | path join "mise.nu")
-const starship_init = ($vendor_autoload | path join "starship.nu")
-const zoxide_init = ($vendor_autoload | path join "zoxide.nu")
-const atuin_init = ($vendor_autoload | path join "atuin.nu")
-const carapace_init = ($vendor_autoload | path join "carapace.nu")
 
-def --env ensure_mise_activation [] {
+def write-atomic-nu [target: path, content: string] {
+    let tmp = $"($target).tmp.($nu.pid)"
+    $content | save --force $tmp
+    mv --force $tmp $target
+}
+
+def ensure_mise_activation [] {
     if ((which mise | length) == 0) {
         return
     }
 
     if (not ($mise_init | path exists)) {
-        ^mise activate nu | save --force $mise_init
+        let out = (^mise activate nu | complete)
+        if $out.exit_code == 0 and ($out.stdout | str trim | is-not-empty) {
+            write-atomic-nu $mise_init $out.stdout
+        }
     }
-
-    source $mise_init
 }
 
 let home = $env.HOME? | default $env.USERPROFILE?
@@ -40,16 +43,12 @@ def --wrapped cat [...files: path]: [nothing -> string, any -> string] {
         $in | to text
     } else {
         $files
-        | each { |file| open $file | to text }
+        | each { |file| open --raw $file | to text }
         | str join ""
     }
 }
 
 ensure_mise_activation
-if ($starship_init | path exists) { source $starship_init }
-source $zoxide_init
-if ($atuin_init | path exists) { source $atuin_init }
-if ($carapace_init | path exists) { source $carapace_init }
 
 if $env.MISE_GITHUB_TOKEN? == null {
     if ((which gh | length) > 0) {

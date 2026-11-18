@@ -28,7 +28,7 @@ def render-init [
         )
     )
     let resolved_out = if $resolved != null {
-        ^$resolved ...$cmd_args | complete
+        try { ^$resolved ...$cmd_args | complete } catch {|err| { exit_code: 1, stdout: "", stderr: $err.msg } }
     } else {
         { exit_code: 1, stdout: "", stderr: "tool unavailable" }
     }

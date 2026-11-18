@@ -32,21 +32,73 @@ if ! command -v fish >/dev/null 2>&1; then
     exit 0
 fi
 fish -c '
+set -l cfg_dir "$__fish_config_dir"
+if test -z "$cfg_dir"
+    set cfg_dir "$HOME/.config/fish"
+end
+set -l manifest "$cfg_dir/fish_plugins"
+set -l manifest_real "$manifest"
+if test -L "$manifest"
+    set manifest_real (realpath "$manifest")
+end
+set -l manifest_bak ""
+set -l desired_plugins
+if test -f "$manifest_real"
+    set manifest_bak (mktemp)
+    cp -f "$manifest_real" "$manifest_bak"
+    for line in (cat "$manifest_bak")
+        set -l trimmed (string trim -- "$line")
+        if test -n "$trimmed"; and not string match -qr "^#" -- "$trimmed"
+            set desired_plugins $desired_plugins "$trimmed"
+        end
+    end
+end
+
+function _restore_manifest --no-scope-shadowing
+    if test -n "$manifest_bak"; and test -f "$manifest_bak"
+        if not cmp -s "$manifest_bak" "$manifest_real"
+            cp -f "$manifest_bak" "$manifest_real"
+        end
+        rm -f "$manifest_bak"
+    end
+end
+
 if not functions -q fisher
     set -l fisher_tmp (mktemp)
-    if not curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish -o $fisher_tmp
-        rm -f $fisher_tmp
+    if not curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish -o "$fisher_tmp"
+        rm -f "$fisher_tmp"
+        _restore_manifest
         echo "Failed to download Fisher installer" >&2
         exit 1
     end
-    source $fisher_tmp
+    source "$fisher_tmp"
     set -l src_status $status
-    rm -f $fisher_tmp
+    rm -f "$fisher_tmp"
     if test $src_status -ne 0; or not fisher install jorgebucaran/fisher
+        _restore_manifest
         echo "Failed to install Fisher" >&2
         exit 1
     end
+    if test -n "$manifest_bak"
+        cp -f "$manifest_bak" "$manifest_real"
+    end
 end
+
 fisher update
+set -l upd_status $status
+_restore_manifest
+if test $upd_status -ne 0
+    echo "fisher update failed" >&2
+    exit 1
+end
+
+set -l installed (fisher list | string lower)
+for p in $desired_plugins
+    set -l p_lower (string lower -- "$p")
+    if not contains -- "$p_lower" $installed
+        echo "Missing expected Fisher plugin after sync: $p" >&2
+        exit 1
+    end
+end
 '
 """

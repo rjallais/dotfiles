@@ -2,7 +2,11 @@
 
 $env.NINEROUTER_URL = "http://localhost:20128"
 
-let home = ($env.HOME? | default ($env.USERPROFILE? | default ($nu.home-dir? | default $nu.home-path?)))
+let home = (
+    [$env.HOME? $env.USERPROFILE? ($nu.home-dir? | default $nu.home-path?)]
+    | where {|p| ($p | default "" | str trim) | is-not-empty }
+    | get --optional 0
+)
 if $home != null {
     let early_bins = (
         [
@@ -23,6 +27,10 @@ if $home != null {
     if (which fnox | is-not-empty) and ($fnox_cfg | path exists) and (($fnox_age | path exists) or $has_age_key or $has_age_key_file) {
         let fnox_env = if (not $has_age_key) and (not $has_age_key_file) and ($fnox_age | path exists) {
             { FNOX_AGE_KEY: null, FNOX_AGE_KEY_FILE: $fnox_age }
+        } else if (not $has_age_key) and $has_age_key_file {
+            { FNOX_AGE_KEY: null }
+        } else if $has_age_key and (not $has_age_key_file) {
+            { FNOX_AGE_KEY_FILE: null }
         } else { {} }
         let res = (with-env $fnox_env { ^fnox -c $fnox_cfg export -f json --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY | complete })
         if $res.exit_code == 0 and ($res.stdout | str trim | is-not-empty) {

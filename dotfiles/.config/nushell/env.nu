@@ -35,24 +35,30 @@ if $home != null {
     # Mirrors bashrc: source OPENAI_API_KEY from ~/.hermes/.env
     let hermes_env = ($home | path join '.hermes' '.env')
     if ($hermes_env | path exists) {
-        let line = (
+        let key = (
             try {
                 open --raw $hermes_env
                 | lines
-                | where {|l| $l | str starts-with 'OPENAI_API_KEY='}
+                | each {|l|
+                    let m = ($l | parse --regex '^\s*(?:export\s+)?OPENAI_API_KEY\s*=\s*(.+?)\s*$')
+                    if ($m | is-not-empty) {
+                        let raw = ($m.0.capture0)
+                        if ($raw | str starts-with '"') {
+                            ($raw | parse --regex '^"((?:[^"\\]|\\.)*)"' | get --optional 0.capture0 | default ($raw | str trim --char '"'))
+                        } else if ($raw | str starts-with "'") {
+                            ($raw | parse --regex "^'([^']*)'" | get --optional 0.capture0 | default ($raw | str trim --char "'"))
+                        } else {
+                            ($raw | str replace --regex '(?:^|\s+)#.*$' '' | str trim)
+                        }
+                    } else { null }
+                }
+                | where {|v| ($v | default "" | is-not-empty) }
+                | reverse
                 | get --optional 0
             } catch { null }
         )
-        if $line != null {
-            let key = (
-                $line
-                | str replace --regex '^OPENAI_API_KEY=' ''
-                | str trim --char '"'
-                | str trim --char "'"
-            )
-            if not ($key | is-empty) {
-                $env.OPENAI_API_KEY = $key
-            }
+        if ($key | default "" | is-not-empty) {
+            $env.OPENAI_API_KEY = $key
         }
     }
 

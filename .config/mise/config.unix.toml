@@ -37,15 +37,31 @@ if test -z "$cfg_dir"
     set cfg_dir "$HOME/.config/fish"
 end
 set -l manifest "$cfg_dir/fish_plugins"
-set -l manifest_real "$manifest"
+set -l was_symlink 0
+set -l link_target ""
+set -l manifest_source "$manifest"
 if test -L "$manifest"
-    set manifest_real (realpath "$manifest")
+    set was_symlink 1
+    set link_target (readlink "$manifest")
+    set manifest_source (realpath "$manifest")
+    if test $status -ne 0; or test -z "$link_target"; or test -z "$manifest_source"
+        echo "Failed to resolve fish_plugins symlink: $manifest" >&2
+        exit 1
+    end
 end
+
 set -l manifest_bak ""
 set -l desired_plugins
-if test -f "$manifest_real"
+if test -f "$manifest_source"
     set manifest_bak (mktemp)
-    cp -f "$manifest_real" "$manifest_bak"
+    if test $status -ne 0; or test -z "$manifest_bak"
+        echo "Failed to create backup file for fish_plugins" >&2
+        exit 1
+    end
+    if not cp -f "$manifest_source" "$manifest_bak"
+        echo "Failed to back up fish_plugins; backup file left at $manifest_bak" >&2
+        exit 1
+    end
     for line in (cat "$manifest_bak")
         set -l trimmed (string trim -- "$line")
         if test -n "$trimmed"; and not string match -qr "^#" -- "$trimmed"
@@ -55,16 +71,41 @@ if test -f "$manifest_real"
 end
 
 function _restore_manifest --no-scope-shadowing
-    if test -n "$manifest_bak"; and test -f "$manifest_bak"
-        if not cmp -s "$manifest_bak" "$manifest_real"
-            cp -f "$manifest_bak" "$manifest_real"
+    if test $was_symlink -eq 1
+        if not rm -f "$manifest"; or not ln -sfn "$link_target" "$manifest"
+            echo "Failed to restore symlink $manifest -> $link_target; backup preserved at $manifest_bak" >&2
+            return 1
         end
+    else if test -n "$manifest_bak"; and test -f "$manifest_bak"
+        if not test -f "$manifest"; or not cmp -s "$manifest_bak" "$manifest"
+            if not cp -f "$manifest_bak" "$manifest"
+                echo "Failed to restore $manifest; backup preserved at $manifest_bak" >&2
+                return 1
+            end
+        end
+    end
+    if test -n "$manifest_bak"
         rm -f "$manifest_bak"
+    end
+    return 0
+end
+
+# Replace symlink with a temporary regular copy so Fisher cannot mutate the repo target
+if test $was_symlink -eq 1; and test -n "$manifest_bak"
+    if not rm -f "$manifest"; or not cp -f "$manifest_bak" "$manifest"
+        echo "Failed to stage writable temporary fish_plugins; backup preserved at $manifest_bak" >&2
+        ln -sfn "$link_target" "$manifest" 2>/dev/null
+        exit 1
     end
 end
 
 if not functions -q fisher
     set -l fisher_tmp (mktemp)
+    if test $status -ne 0; or test -z "$fisher_tmp"
+        _restore_manifest
+        echo "Failed to create temp file for Fisher installer" >&2
+        exit 1
+    end
     if not curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish -o "$fisher_tmp"
         rm -f "$fisher_tmp"
         _restore_manifest
@@ -80,13 +121,19 @@ if not functions -q fisher
         exit 1
     end
     if test -n "$manifest_bak"
-        cp -f "$manifest_bak" "$manifest_real"
+        if not cp -f "$manifest_bak" "$manifest"
+            _restore_manifest
+            echo "Failed to reset staged fish_plugins before fisher update" >&2
+            exit 1
+        end
     end
 end
 
 fisher update
 set -l upd_status $status
-_restore_manifest
+if not _restore_manifest
+    exit 1
+end
 if test $upd_status -ne 0
     echo "fisher update failed" >&2
     exit 1

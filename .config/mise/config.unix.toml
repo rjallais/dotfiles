@@ -80,19 +80,22 @@ _restore_manifest() {
             if ! rm -f "$manifest" || ! ln -sfn "$link_target" "$manifest"; then
                 echo "Failed to restore symlink $manifest -> $link_target; backup preserved at $manifest_bak" >&2
                 restore_rc=1
-            else
-                rm -f "$state_file"
+            elif ! rm -f "$state_file"; then
+                echo "Failed to clear symlink recovery state $state_file; remove it before editing fish_plugins or retrying" >&2
+                restore_rc=1
             fi
         elif [ -n "$manifest_bak" ] && [ -f "$manifest_bak" ]; then
             if [ ! -f "$manifest" ] || ! cmp -s "$manifest_bak" "$manifest"; then
                 if ! cp -f "$manifest_bak" "$manifest"; then
                     echo "Failed to restore $manifest; backup preserved at $manifest_bak" >&2
                     restore_rc=1
-                else
-                    rm -f "$file_backup_state"
+                elif ! rm -f "$file_backup_state"; then
+                    echo "Failed to clear pending recovery backup $file_backup_state; resolve it before editing fish_plugins or retrying" >&2
+                    restore_rc=1
                 fi
-            else
-                rm -f "$file_backup_state"
+            elif ! rm -f "$file_backup_state"; then
+                echo "Failed to clear pending recovery backup $file_backup_state; resolve it before editing fish_plugins or retrying" >&2
+                restore_rc=1
             fi
         fi
     fi
@@ -257,20 +260,26 @@ if not fisher update
 end
 
 if test -n "$FISH_SYNC_STAGED"; and test -f "$FISH_SYNC_STAGED"
-    set -l installed (fisher list | string lower)
+    set -l installed_raw (fisher list)
+    set -l installed_lower (printf '%s\\n' $installed_raw | string lower)
     while read -l p
-        set -l p_norm "$p"
-        set -l expanded (string replace -r "^~/" "$HOME/" -- "$p_norm")
+        test -z "$p"; and continue
+        set -l expanded (string replace -r "^~/" "$HOME/" -- "$p")
         if test -d "$expanded"
             set -l canon (realpath -- "$expanded" 2>/dev/null)
-            if test $status -eq 0; and test -n "$canon"
-                set p_norm "$canon"
+            if test $status -ne 0; or test -z "$canon"
+                set canon "$expanded"
             end
-        end
-        set -l p_lower (string lower -- "$p_norm")
-        if test -n "$p_lower"; and not contains -- "$p_lower" $installed
-            echo "Missing expected Fisher plugin after sync: $p" >&2
-            exit 1
+            if not contains -- "$canon" $installed_raw
+                echo "Missing expected Fisher plugin after sync: $p" >&2
+                exit 1
+            end
+        else
+            set -l p_lower (string lower -- "$p")
+            if not contains -- "$p_lower" $installed_lower
+                echo "Missing expected Fisher plugin after sync: $p" >&2
+                exit 1
+            end
         end
     end < "$FISH_SYNC_STAGED"
 end

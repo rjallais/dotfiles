@@ -571,6 +571,11 @@ def install-sysexts-manager [
             if $rb_img.exit_code != 0 {
                 $rollback_errs = ($rollback_errs | append $"manager image rollback failed: ($rb_img.stderr | str trim)")
             }
+        } else if ($backup_target | is-empty) and ($target | path exists) {
+            let rb_new = (^$runner rm -f $target | complete)
+            if $rb_new.exit_code != 0 {
+                $rollback_errs = ($rollback_errs | append $"new manager image removal failed: ($rb_new.stderr | str trim)")
+            }
         }
         if $had_prev_link {
             let rb_ln = (^$runner ln -snf $prev_target $mgr_link | complete)
@@ -680,6 +685,12 @@ def sysexts-update-all [
             | each {|p| { link: $p, target: ((^readlink $p | complete).stdout | str trim) } }
             | where {|item| $item.target | is-not-empty }
         }
+        if not $dry_run {
+            let non_symlinks = (glob "/run/extensions/*.raw" | where {|p| ($p | path type) != "symlink" })
+            if ($non_symlinks | is-not-empty) {
+                error make { msg: $"Refusing to run sysexts-manager enable with non-symlink runtime images in /run/extensions: ($non_symlinks | str join ', ')" }
+            }
+        }
 
         let prev_mgr = if (not $dry_run) and (($mgr_link | path type) == "symlink") {
             ((^readlink $mgr_link | complete).stdout | str trim)
@@ -697,9 +708,8 @@ def sysexts-update-all [
                 $mgr_matches
                 | where {|p|
                     let base = ($p | path basename)
-                    let rel_ok = ($rel_tag | is-empty) or ($base | str contains $rel_tag)
-                    let arch_ok = ($arch_tags | any {|a| $base | str ends-with $"-($a).raw" })
-                    $rel_ok and $arch_ok
+                    let suffix_prefix = if ($rel_tag | is-not-empty) { $rel_tag } else { "-" }
+                    $arch_tags | any {|a| $base | str ends-with $"($suffix_prefix)($a).raw" }
                 }
             )
             let planned = if ($mgr_link | path type) == "symlink" and ($compat_mgr | is-not-empty) {
@@ -807,9 +817,8 @@ def sysexts-update-all [
                     | where {|p| (sysext-owner $p $names) == $sname }
                     | where {|p|
                         let base = ($p | path basename)
-                        let rel_ok = ($rel_tag | is-empty) or ($base | str contains $rel_tag)
-                        let arch_ok = ($arch_tags | any {|a| $base | str ends-with $"-($a).raw" })
-                        $rel_ok and $arch_ok
+                        let suffix_prefix = if ($rel_tag | is-not-empty) { $rel_tag } else { "-" }
+                        $arch_tags | any {|a| $base | str ends-with $"($suffix_prefix)($a).raw" }
                     }
                 )
                 let planned = if ($compat | is-not-empty) {

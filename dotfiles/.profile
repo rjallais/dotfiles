@@ -73,7 +73,7 @@ fi
 # Load encrypted API keys via fnox when age identity is available
 if command -v fnox > /dev/null 2>&1 && [ -f "$HOME/.config/fnox/config.toml" ] && { [ -f "$HOME/.config/fnox/age.txt" ] || [ -n "${FNOX_AGE_KEY:-}" ] || [ -n "${FNOX_AGE_KEY_FILE:-}" ]; }; then
     if [ -z "${FNOX_AGE_KEY:-}" ]; then
-        eval "$(env -u FNOX_AGE_KEY fnox -c "$HOME/.config/fnox/config.toml" export -f shell --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY 2>/dev/null || true)"
+        eval "$(env -u FNOX_AGE_KEY FNOX_AGE_KEY_FILE="${FNOX_AGE_KEY_FILE:-$HOME/.config/fnox/age.txt}" fnox -c "$HOME/.config/fnox/config.toml" export -f shell --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY 2>/dev/null || true)"
     else
         eval "$(fnox -c "$HOME/.config/fnox/config.toml" export -f shell --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY 2>/dev/null || true)"
     fi

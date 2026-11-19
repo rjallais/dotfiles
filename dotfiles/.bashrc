@@ -121,12 +121,35 @@ elif command -v starship &> /dev/null; then
 fi
 
 # DigitalOcean Inference API key (for Grok CLI custom DO models)
+# Parse last valid non-empty OPENAI_API_KEY from ~/.hermes/.env without executing it (mirrors Nushell env.nu)
 if [ -f "$HOME/.hermes/.env" ]; then
-    _openai_key="$(grep -m1 '^OPENAI_API_KEY=' "$HOME/.hermes/.env" 2>/dev/null | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")"
+    _openai_key=""
+    _re_assign='^[[:space:]]*(export[[:space:]]+)?OPENAI_API_KEY[[:space:]]*=[[:space:]]*(.+)$'
+    _re_dq='^"(([^"\\]|\\.)*)"[[:space:]]*(#.*)?$'
+    _re_sq="^'([^']*)'[[:space:]]*(#.*)?$"
+    while IFS= read -r _line || [ -n "$_line" ]; do
+        _line="${_line%$'\r'}"
+        if [[ "$_line" =~ $_re_assign ]]; then
+            _raw="${BASH_REMATCH[2]}"
+            _raw="${_raw%"${_raw##*[![:space:]]}"}"
+            _val=""
+            if [[ "$_raw" == \"* ]]; then
+                [[ "$_raw" =~ $_re_dq ]] && _val="${BASH_REMATCH[1]}"
+            elif [[ "$_raw" == \'* ]]; then
+                [[ "$_raw" =~ $_re_sq ]] && _val="${BASH_REMATCH[1]}"
+            else
+                _val="$(printf '%s\n' "$_raw" | sed -E 's/(^|[[:space:]]+)#.*$//')"
+                _val="${_val%"${_val##*[![:space:]]}"}"
+            fi
+            if [ -n "$_val" ]; then
+                _openai_key="$_val"
+            fi
+        fi
+    done < "$HOME/.hermes/.env"
     if [ -n "$_openai_key" ]; then
         export OPENAI_API_KEY="$_openai_key"
     fi
-    unset _openai_key
+    unset _openai_key _re_assign _re_dq _re_sq _line _raw _val
 fi
 
 # 9Router gateway

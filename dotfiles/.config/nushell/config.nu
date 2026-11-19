@@ -77,7 +77,9 @@ $env.config = {
     ]
 }
 
-mkdir ($nu.data-dir | path join "vendor" "autoload")
+if $env.SYSEXTS_LOCKED? != "1" {
+    mkdir ($nu.data-dir | path join "vendor" "autoload")
+}
 
 const vendor_autoload = ($nu.data-dir | path join "vendor" "autoload")
 const mise_init = ($vendor_autoload | path join "mise.nu")
@@ -238,8 +240,10 @@ def --wrapped cat [...files: path]: [nothing -> string, any -> string] {
     }
 }
 
-ensure_mise_activation
-ensure_starship_activation
+if $env.SYSEXTS_LOCKED? != "1" {
+    ensure_mise_activation
+    ensure_starship_activation
+}
 
 # argc-completions setup (replaces carapace; auto-loaded from vendor/autoload)
 def --env ensure_argc_completions [] {
@@ -261,8 +265,10 @@ def --env ensure_argc_completions [] {
     }
 }
 
-ensure_argc_completions
-normalize_path
+if $env.SYSEXTS_LOCKED? != "1" {
+    ensure_argc_completions
+    normalize_path
+}
 
 $env.config = (
     $env.config?
@@ -282,7 +288,7 @@ $env.config.hooks.pre_prompt = (
     | append { code: { normalize_path } }
 )
 
-if $env.MISE_GITHUB_TOKEN? == null {
+if ($env.SYSEXTS_LOCKED? != "1") and ($env.MISE_GITHUB_TOKEN? == null) {
     if ((which gh | length) > 0) {
         let gh_auth = (^gh auth token | complete)
         if $gh_auth.exit_code == 0 {
@@ -303,20 +309,33 @@ $env.GOOGLE_CLOUD_LOCATION = "global"
 
 # Linux-only: Fedora CoreOS system extension management
 # These functions require sudo, systemctl, and Linux paths
+def sysext-priv-runner [] {
+    if ((^id -u | complete).stdout | str trim) == "0" {
+        "/usr/bin/env"
+    } else if (which run0 | is-not-empty) {
+        "run0"
+    } else if (which sudo | is-not-empty) {
+        "sudo"
+    } else {
+        error make { msg: "run0 or sudo is required for privileged sysext operations" }
+    }
+}
+
 def sudo-download-install [url: string, dest: path] {
+    let runner = (sysext-priv-runner)
     let tmp = (^mktemp | str trim)
     let staged = $"($dest).new.($nu.pid)"
     let cleanup = {
         ^rm -f $tmp | complete | ignore
-        ^sudo rm -f $staged | complete | ignore
+        ^$runner rm -f $staged | complete | ignore
     }
     try {
         let res = (^curl --silent --fail --location $url -o $tmp | complete)
         if $res.exit_code != 0 or (^test -s $tmp | complete).exit_code != 0 {
             error make { msg: $"Failed to download ($url): ($res.stderr | str trim)" }
         }
-        ^sudo install -m 0644 -o 0 -g 0 $tmp $staged
-        ^sudo mv -f $staged $dest
+        ^$runner install -m 0644 -o 0 -g 0 $tmp $staged
+        ^$runner mv -f $staged $dest
     } catch { |err|
         do $cleanup
         error make $err
@@ -426,11 +445,11 @@ def sysext-active-targets [sname: string] {
     | uniq
 }
 
-def sysext-all-active-targets [skip_link: string = ""] {
+def sysext-all-active-targets [skip_links: list<string> = []] {
     (glob "/var/lib/extensions/*.raw")
     | append (glob "/etc/extensions/*.raw")
     | append (glob "/run/extensions/*.raw")
-    | where {|lnk| ($lnk != $skip_link) and (($lnk | path type) == "symlink") }
+    | where {|lnk| ($lnk not-in $skip_links) and (($lnk | path type) == "symlink") }
     | each {|lnk| try { $lnk | path expand } catch { "" } }
     | where {|p| $p | is-not-empty }
     | uniq
@@ -452,26 +471,18 @@ def _dispatch-locked-sysext [] {
 }
 
 def run-sysext-locked [call_name: string, call_args: record] {
-    if (which flock | is-empty) {
-        error make { msg: "flock is required to serialize sysext operations" }
-    }
     let cfg = ($env.SYSEXTS_CONFIG_PATH? | default $nu.config-path)
-    let lock_dir = ($env.XDG_RUNTIME_DIR? | default $nu.cache-dir)
-    mkdir $lock_dir
-    let lock_file = ($lock_dir | path join "sysexts-manage.lock")
-    with-env {
-        SYSEXTS_LOCKED: "1"
-        SYSEXTS_LOCK_CALL: $call_name
-        SYSEXTS_LOCK_ARGS: ($call_args | to json --raw)
-    } {
-        try {
-            ^flock -E 75 -n $lock_file $nu.current-exe --no-config-file -c $"source ($cfg | to json); _dispatch-locked-sysext"
-        } catch {
-            if $env.LAST_EXIT_CODE == 75 {
-                error make { msg: $"Another sysext management operation is already running \(lock: ($lock_file)\)" }
-            }
-            error make { msg: $"Sysext operation failed with exit code ($env.LAST_EXIT_CODE)" }
+    let runner = (sysext-priv-runner)
+    let lock_file = "/run/lock/sysexts-manage/lock"
+    let lock_sh = 'command -v flock >/dev/null 2>&1 || { echo "flock is required to serialize sysext operations" >&2; exit 127; }; install -d -m 0755 -o 0 -g 0 /run/lock && install -d -m 0700 -o 0 -g 0 /run/lock/sysexts-manage && exec flock -E 75 -n /run/lock/sysexts-manage/lock /usr/bin/env SYSEXTS_LOCKED=1 SYSEXTS_LOCK_CALL="$1" SYSEXTS_LOCK_ARGS="$2" "$3" --no-config-file -c "$4"'
+    let nu_cmd = $"source ($cfg | to json); _dispatch-locked-sysext"
+    try {
+        ^$runner -- /bin/sh -c $lock_sh sysexts-lock $call_name ($call_args | to json --raw) $nu.current-exe $nu_cmd
+    } catch {
+        if $env.LAST_EXIT_CODE == 75 {
+            error make { msg: $"Another sysext management operation is already running \(lock: ($lock_file)\)" }
         }
+        error make { msg: $"Sysext operation failed with exit code ($env.LAST_EXIT_CODE)" }
     }
 }
 
@@ -515,16 +526,58 @@ def install-sysexts-manager [
         return
     }
 
+    let runner = (sysext-priv-runner)
     let url = "https://github.com/travier/sysexts-manager/releases/download/sysexts-manager"
     let name = $"sysexts-manager-($version)-($version_id)-($arch).raw"
     let target = $"/var/lib/extensions.d/($name)"
+    let mgr_link = "/var/lib/extensions/sysexts-manager.raw"
 
-    ^sudo install -d -m 0755 -o 0 -g 0 /var/lib/extensions /var/lib/extensions.d /run/extensions
+    ^$runner install -d -m 0755 -o 0 -g 0 /var/lib/extensions /var/lib/extensions.d /run/extensions
     sudo-download-install $"($url)/($name)" $target
-    ^sudo ln -snf $target /var/lib/extensions/sysexts-manager.raw
-    ^sudo restorecon -RFv /var/lib/extensions /var/lib/extensions.d /run/extensions
-    ^sudo systemctl enable systemd-sysext.service
-    ^sudo systemctl restart systemd-sysext.service
+
+    let had_prev_link = (($mgr_link | path type) == "symlink")
+    if (not $had_prev_link) and ($mgr_link | path exists) {
+        error make { msg: $"Refusing to overwrite non-symlink manager path: ($mgr_link)" }
+    }
+    let prev_target = if $had_prev_link {
+        let rl = (^readlink $mgr_link | complete)
+        if $rl.exit_code != 0 or ($rl.stdout | str trim | is-empty) {
+            error make { msg: $"Failed to read existing manager symlink ($mgr_link)" }
+        }
+        $rl.stdout | str trim
+    } else {
+        ""
+    }
+
+    ^$runner ln -snf $target $mgr_link
+    try {
+        ^$runner restorecon -RFv /var/lib/extensions /var/lib/extensions.d /run/extensions
+        ^$runner systemctl enable systemd-sysext.service
+        ^$runner systemctl restart systemd-sysext.service
+    } catch { |err|
+        mut rollback_errs = []
+        if $had_prev_link {
+            let rb_ln = (^$runner ln -snf $prev_target $mgr_link | complete)
+            if $rb_ln.exit_code != 0 {
+                $rollback_errs = ($rollback_errs | append $"manager link rollback failed: ($rb_ln.stderr | str trim)")
+            }
+        } else {
+            let rb_rm = (^$runner rm -f $mgr_link | complete)
+            if $rb_rm.exit_code != 0 {
+                $rollback_errs = ($rollback_errs | append $"manager link removal failed: ($rb_rm.stderr | str trim)")
+            }
+        }
+        let rb_merge = (^$runner systemctl restart systemd-sysext.service | complete)
+        if $rb_merge.exit_code != 0 {
+            $rollback_errs = ($rollback_errs | append $"recovery merge failed: ($rb_merge.stderr | str trim)")
+        }
+        let msg = if ($rollback_errs | is-not-empty) {
+            $"($err.msg); ($rollback_errs | str join '; ')"
+        } else {
+            $err.msg
+        }
+        error make { msg: $msg }
+    }
 }
 
 # All-in-one: update all sysexts, enable newest, refresh merge, prune old images.
@@ -545,7 +598,7 @@ def sysexts-update-all [
         return
     }
 
-    let runner = if (which run0 | is-not-empty) { "run0" } else { "sudo" }
+    let runner = if $dry_run { if (which run0 | is-not-empty) { "run0" } else { "sudo" } } else { sysext-priv-runner }
     let vflag = if $verbose { ["-v"] } else { [] }
     let service_exists = ((^systemctl list-unit-files sysexts-manager.service | complete).exit_code == 0)
     let unit_state = if $service_exists {
@@ -719,18 +772,55 @@ def sysexts-update-all [
     )
 
     let all_images = (glob "/var/lib/extensions.d/*.raw")
-    let dry_skip = if $dry_run and ($planned_mgr_target | is-not-empty) { $mgr_link } else { "" }
-    let global_active = (sysext-all-active-targets $dry_skip)
+    if $dry_run {
+        print "[dry-run] preview based on currently downloaded images (remote updates not fetched)"
+    }
+    let dry_plans = if $dry_run {
+        $names | each {|sname|
+            if $sname == "sysexts-manager" {
+                let skip = if ($planned_mgr_target | is-not-empty) { $mgr_link } else { "" }
+                { name: $sname, planned: $planned_mgr_target, skip_link: $skip }
+            } else {
+                let compat = (
+                    $all_images
+                    | where {|p| (sysext-owner $p $names) == $sname }
+                    | where {|p|
+                        let base = ($p | path basename)
+                        let rel_ok = ($rel_tag | is-empty) or ($base | str contains $rel_tag)
+                        let arch_ok = ($arch_tags | any {|a| $base | str ends-with $"-($a).raw" })
+                        $rel_ok and $arch_ok
+                    }
+                )
+                let planned = if ($compat | is-not-empty) {
+                    (sort-sysext-paths $sname $rel_tag $compat | last | path expand)
+                } else { "" }
+                let skip = if ($planned | is-not-empty) { $"/run/extensions/($sname).raw" } else { "" }
+                { name: $sname, planned: $planned, skip_link: $skip }
+            }
+        }
+    } else { [] }
+    let dry_skip_links = if ($dry_plans | is-not-empty) {
+        $dry_plans | get skip_link | where {|p| $p | is-not-empty }
+    } else { [] }
+    let dry_planned_targets = if ($dry_plans | is-not-empty) {
+        $dry_plans | get planned | where {|p| $p | is-not-empty }
+    } else { [] }
+    let global_active = ((sysext-all-active-targets $dry_skip_links) ++ $dry_planned_targets | uniq)
 
     for sname in $names {
         let matches = ($all_images | where {|p| (sysext-owner $p $names) == $sname })
         let live_targets = (sysext-active-targets $sname)
-        let active_targets = if $dry_run and $sname == "sysexts-manager" and ($planned_mgr_target | is-not-empty) {
-            let etc_link = $"/etc/extensions/($sname).raw"
-            let run_link = $"/run/extensions/($sname).raw"
-            let etc_target = if ($etc_link | path type) == "symlink" { try { $etc_link | path expand } catch { "" } } else { "" }
-            let run_target = if ($run_link | path type) == "symlink" { try { $run_link | path expand } catch { "" } } else { "" }
-            ([$planned_mgr_target $etc_target $run_target] | where {|p| $p | is-not-empty } | uniq)
+        let plan_entry = ($dry_plans | where {|r| $r.name == $sname } | get --optional 0)
+        let planned_target = ($plan_entry | get --optional planned | default "")
+        let skip_link = ($plan_entry | get --optional skip_link | default "")
+        let active_targets = if $dry_run and ($planned_target | is-not-empty) {
+            let kept_live = (
+                [$"/var/lib/extensions/($sname).raw" $"/etc/extensions/($sname).raw" $"/run/extensions/($sname).raw"]
+                | where {|lnk| ($lnk != $skip_link) and (($lnk | path type) == "symlink") }
+                | each {|lnk| try { $lnk | path expand } catch { "" } }
+                | where {|p| $p | is-not-empty }
+            )
+            ([$planned_target] ++ $kept_live | uniq)
         } else {
             $live_targets
         }
@@ -744,7 +834,11 @@ def sysexts-update-all [
             let stale = ($ranked | take ($n_pool - $extra_keep))
             for full in $stale {
                 if $dry_run {
-                    print $"[dry-run] would delete: ($full)"
+                    if ($planned_target | is-not-empty) {
+                        print $"[dry-run] prune candidate \(based on current disk images\): ($full)"
+                    } else {
+                        print $"[dry-run] preview only \(planned activation unknown; current links kept\): ($full)"
+                    }
                 } else if ($full | path expand) in (sysext-all-active-targets) {
                     print $"Skipping active image: ($full)"
                 } else {
@@ -797,6 +891,6 @@ def md5 [...files: string] {
 }
 
 # Bluefin MOTD
-if $nu.is-interactive {
+if $nu.is-interactive and ($env.SYSEXTS_LOCKED? != "1") {
     try { bluefin-cli motd show }
 }

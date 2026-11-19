@@ -32,7 +32,7 @@ if $home != null {
     $env.AQUA_GLOBAL_CONFIG = ($home | path join "aqua.yaml")
 
     # DigitalOcean Inference API key (for Grok CLI custom DO models)
-    # Mirrors bashrc: source OPENAI_API_KEY from ~/.hermes/.env
+    # Mirrors bashrc: parse last valid non-empty OPENAI_API_KEY from ~/.hermes/.env without executing it
     let hermes_env = ($home | path join '.hermes' '.env')
     if ($hermes_env | path exists) {
         let key = (
@@ -44,9 +44,9 @@ if $home != null {
                     if ($m | is-not-empty) {
                         let raw = ($m.0.capture0)
                         if ($raw | str starts-with '"') {
-                            ($raw | parse --regex '^"((?:[^"\\]|\\.)*)"' | get --optional 0.capture0 | default ($raw | str trim --char '"'))
+                            ($raw | parse --regex '^"((?:[^"\\]|\\.)*)"\s*(?:#.*)?$' | get --optional 0.capture0)
                         } else if ($raw | str starts-with "'") {
-                            ($raw | parse --regex "^'([^']*)'" | get --optional 0.capture0 | default ($raw | str trim --char "'"))
+                            ($raw | parse --regex "^'([^']*)'\\s*(?:#.*)?$" | get --optional 0.capture0)
                         } else {
                             ($raw | str replace --regex '(?:^|\s+)#.*$' '' | str trim)
                         }

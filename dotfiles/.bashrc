@@ -126,7 +126,7 @@ if [ -f "$HOME/.hermes/.env" ]; then
     _openai_key=""
     _re_assign='^[[:space:]]*(export[[:space:]]+)?OPENAI_API_KEY[[:space:]]*=[[:space:]]*(.+)$'
     _re_dq='^"(([^"\\]|\\.)*)"[[:space:]]*(#.*)?$'
-    _re_sq="^'([^']*)'[[:space:]]*(#.*)?$"
+    _re_sq="^'(([^'\\\\]|\\\\.)*)'[[:space:]]*(#.*)?$"
     while IFS= read -r _line || [ -n "$_line" ]; do
         _line="${_line%$'\r'}"
         if [[ "$_line" =~ $_re_assign ]]; then
@@ -134,9 +134,17 @@ if [ -f "$HOME/.hermes/.env" ]; then
             _raw="${_raw%"${_raw##*[![:space:]]}"}"
             _val=""
             if [[ "$_raw" == \"* ]]; then
-                [[ "$_raw" =~ $_re_dq ]] && _val="${BASH_REMATCH[1]}"
+                if [[ "$_raw" =~ $_re_dq ]]; then
+                    _val="${BASH_REMATCH[1]}"
+                    _val="${_val//\\\"/\"}"
+                    _val="${_val//\\\\/\\}"
+                fi
             elif [[ "$_raw" == \'* ]]; then
-                [[ "$_raw" =~ $_re_sq ]] && _val="${BASH_REMATCH[1]}"
+                if [[ "$_raw" =~ $_re_sq ]]; then
+                    _val="${BASH_REMATCH[1]}"
+                    _val="${_val//\\\'/\'}"
+                    _val="${_val//\\\\/\\}"
+                fi
             else
                 _val="$(printf '%s\n' "$_raw" | sed -E 's/(^|[[:space:]]+)#.*$//')"
                 _val="${_val%"${_val##*[![:space:]]}"}"
@@ -157,5 +165,9 @@ export NINEROUTER_URL="http://localhost:20128"
 
 # Load encrypted API keys via fnox when age identity is available
 if command -v fnox &> /dev/null && [ -f "$HOME/.config/fnox/config.toml" ] && { [ -f "$HOME/.config/fnox/age.txt" ] || [ -n "${FNOX_AGE_KEY:-}" ] || [ -n "${FNOX_AGE_KEY_FILE:-}" ]; }; then
-    eval "$(fnox -c "$HOME/.config/fnox/config.toml" export -f shell --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY 2>/dev/null || true)"
+    if [ -z "${FNOX_AGE_KEY:-}" ]; then
+        eval "$(env -u FNOX_AGE_KEY fnox -c "$HOME/.config/fnox/config.toml" export -f shell --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY 2>/dev/null || true)"
+    else
+        eval "$(fnox -c "$HOME/.config/fnox/config.toml" export -f shell --if-missing ignore ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY 2>/dev/null || true)"
+    fi
 fi

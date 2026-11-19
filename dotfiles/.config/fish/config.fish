@@ -102,9 +102,14 @@ end
 set -gx NINEROUTER_URL "http://localhost:20128"
 
 # Load encrypted API keys via fnox when age identity is available
-if command -q fnox; and test -f "$HOME/.config/fnox/config.toml"; and begin test -f "$HOME/.config/fnox/age.txt"; or set -q FNOX_AGE_KEY; or set -q FNOX_AGE_KEY_FILE; end
+if command -q fnox; and test -f "$HOME/.config/fnox/config.toml"; and begin test -f "$HOME/.config/fnox/age.txt"; or test -n "$FNOX_AGE_KEY"; or test -n "$FNOX_AGE_KEY_FILE"; end
     for _key in ARTIFICIAL_ANALYSIS_API_KEY NINEROUTER_KEY
-        set -l _val (fnox -c "$HOME/.config/fnox/config.toml" get --if-missing ignore $_key 2>/dev/null)
+        set -l _val ""
+        if set -q FNOX_AGE_KEY; and test -z "$FNOX_AGE_KEY"
+            set _val (env -u FNOX_AGE_KEY fnox -c "$HOME/.config/fnox/config.toml" get --if-missing ignore $_key 2>/dev/null)
+        else
+            set _val (fnox -c "$HOME/.config/fnox/config.toml" get --if-missing ignore $_key 2>/dev/null)
+        end
         if test -n "$_val"
             set -gx $_key "$_val"
         end

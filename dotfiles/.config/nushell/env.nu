@@ -44,9 +44,17 @@ if $home != null {
                     if ($m | is-not-empty) {
                         let raw = ($m.0.capture0)
                         if ($raw | str starts-with '"') {
-                            ($raw | parse --regex '^"((?:[^"\\]|\\.)*)"\s*(?:#.*)?$' | get --optional 0.capture0)
+                            let cap = ($raw | parse --regex '^"((?:[^"\\]|\\.)*)"\s*(?:#.*)?$' | get --optional 0.capture0)
+                            if $cap != null {
+                                try { $"\"($cap)\"" | from json } catch {
+                                    $cap | str replace --all '\"' '"' | str replace --all '\\' '\'
+                                }
+                            } else { null }
                         } else if ($raw | str starts-with "'") {
-                            ($raw | parse --regex "^'([^']*)'\\s*(?:#.*)?$" | get --optional 0.capture0)
+                            let cap = ($raw | parse --regex "^'((?:[^'\\\\]|\\\\.)*)'\\s*(?:#.*)?$" | get --optional 0.capture0)
+                            if $cap != null {
+                                $cap | str replace --all "\\'" "'" | str replace --all '\\' '\'
+                            } else { null }
                         } else {
                             ($raw | str replace --regex '(?:^|\s+)#.*$' '' | str trim)
                         }

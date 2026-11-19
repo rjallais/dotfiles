@@ -418,9 +418,9 @@ def sort-sysext-paths [sname: string, rel_tag: string, paths: list<string>] {
 def host-sysext-arch-tags [] {
     let machine = ((^uname -m | complete).stdout | str trim | str lowercase)
     match $machine {
-        "x86_64" | "amd64" => ["x86-64" "x86_64"]
-        "aarch64" | "arm64" => ["arm64" "aarch64"]
-        _ => [$machine ($machine | str replace "_" "-")]
+        "x86_64" | "amd64" => ["x86-64"]
+        "aarch64" | "arm64" => ["arm64"]
+        _ => [($machine | str replace "_" "-")]
     }
 }
 
@@ -473,11 +473,13 @@ def _dispatch-locked-sysext [] {
 def run-sysext-locked [call_name: string, call_args: record] {
     let cfg = ($env.SYSEXTS_CONFIG_PATH? | default $nu.config-path)
     let runner = (sysext-priv-runner)
+    let uid = ((^id -u | complete).stdout | str trim)
+    let gid = ((^id -g | complete).stdout | str trim)
     let lock_file = "/run/lock/sysexts-manage/lock"
-    let lock_sh = 'command -v flock >/dev/null 2>&1 || { echo "flock is required to serialize sysext operations" >&2; exit 127; }; install -d -m 0755 -o 0 -g 0 /run/lock && install -d -m 0700 -o 0 -g 0 /run/lock/sysexts-manage && exec flock -E 75 -n /run/lock/sysexts-manage/lock /usr/bin/env SYSEXTS_LOCKED=1 SYSEXTS_LOCK_CALL="$1" SYSEXTS_LOCK_ARGS="$2" "$3" --no-config-file -c "$4"'
+    let lock_sh = 'command -v flock >/dev/null 2>&1 || { echo "flock is required to serialize sysext operations" >&2; exit 127; }; install -d -m 0700 -o 0 -g 0 /run/lock/sysexts-manage && if [ "$5" != "0" ]; then command -v setpriv >/dev/null 2>&1 || { echo "setpriv is required to drop privileges" >&2; exit 127; }; exec flock -E 75 -n /run/lock/sysexts-manage/lock setpriv --reuid="$5" --regid="$6" --init-groups /usr/bin/env SYSEXTS_LOCKED=1 SYSEXTS_LOCK_CALL="$1" SYSEXTS_LOCK_ARGS="$2" "$3" --no-config-file -c "$4"; else exec flock -E 75 -n /run/lock/sysexts-manage/lock /usr/bin/env SYSEXTS_LOCKED=1 SYSEXTS_LOCK_CALL="$1" SYSEXTS_LOCK_ARGS="$2" "$3" --no-config-file -c "$4"; fi'
     let nu_cmd = $"source ($cfg | to json); _dispatch-locked-sysext"
     try {
-        ^$runner -- /bin/sh -c $lock_sh sysexts-lock $call_name ($call_args | to json --raw) $nu.current-exe $nu_cmd
+        ^$runner -- /bin/sh -c $lock_sh sysexts-lock $call_name ($call_args | to json --raw) $nu.current-exe $nu_cmd $uid $gid
     } catch {
         if $env.LAST_EXIT_CODE == 75 {
             error make { msg: $"Another sysext management operation is already running \(lock: ($lock_file)\)" }
@@ -533,7 +535,6 @@ def install-sysexts-manager [
     let mgr_link = "/var/lib/extensions/sysexts-manager.raw"
 
     ^$runner install -d -m 0755 -o 0 -g 0 /var/lib/extensions /var/lib/extensions.d /run/extensions
-    sudo-download-install $"($url)/($name)" $target
 
     let had_prev_link = (($mgr_link | path type) == "symlink")
     if (not $had_prev_link) and ($mgr_link | path exists) {
@@ -549,13 +550,28 @@ def install-sysexts-manager [
         ""
     }
 
-    ^$runner ln -snf $target $mgr_link
+    let backup_target = if ($target | path exists) {
+        let bak = $"($target).bak.($nu.pid)"
+        ^$runner cp -a $target $bak
+        $bak
+    } else {
+        ""
+    }
+
     try {
+        sudo-download-install $"($url)/($name)" $target
+        ^$runner ln -snf $target $mgr_link
         ^$runner restorecon -RFv /var/lib/extensions /var/lib/extensions.d /run/extensions
         ^$runner systemctl enable systemd-sysext.service
         ^$runner systemctl restart systemd-sysext.service
     } catch { |err|
         mut rollback_errs = []
+        if ($backup_target | is-not-empty) and ($backup_target | path exists) {
+            let rb_img = (^$runner mv -f $backup_target $target | complete)
+            if $rb_img.exit_code != 0 {
+                $rollback_errs = ($rollback_errs | append $"manager image rollback failed: ($rb_img.stderr | str trim)")
+            }
+        }
         if $had_prev_link {
             let rb_ln = (^$runner ln -snf $prev_target $mgr_link | complete)
             if $rb_ln.exit_code != 0 {
@@ -577,6 +593,9 @@ def install-sysexts-manager [
             $err.msg
         }
         error make { msg: $msg }
+    }
+    if ($backup_target | is-not-empty) {
+        ^$runner rm -f $backup_target | complete | ignore
     }
 }
 
@@ -662,87 +681,89 @@ def sysexts-update-all [
             | where {|item| $item.target | is-not-empty }
         }
 
-        print $"==> step 2 enabling newest images via ($runner)"
-        if $dry_run {
-            print $"[dry-run] would run: ($runner) sysexts-manager enable"
-        } else {
-            ^$runner sysexts-manager ...$vflag enable
-        }
-
-        let mgr_matches = (glob "/var/lib/extensions.d/sysexts-manager-*.raw")
-        let compat_mgr = (
-            $mgr_matches
-            | where {|p|
-                let base = ($p | path basename)
-                let rel_ok = ($rel_tag | is-empty) or ($base | str contains $rel_tag)
-                let arch_ok = ($arch_tags | any {|a| $base | str ends-with $"-($a).raw" })
-                $rel_ok and $arch_ok
-            }
-        )
-        let switch_info = if ($mgr_link | path type) == "symlink" and ($compat_mgr | is-not-empty) {
-            let newest_mgr = (sort-sysext-paths "sysexts-manager" $rel_tag $compat_mgr | last)
-            let cur_mgr = (try { $mgr_link | path expand } catch { "" })
-            let compat_expanded = ($compat_mgr | each {|p| $p | path expand })
-            let needs_switch = ($cur_mgr | is-empty) or ($cur_mgr not-in $compat_expanded) or (($newest_mgr | path expand) != $cur_mgr)
-            let planned = ($newest_mgr | path expand)
-            if $needs_switch {
-                if $dry_run {
-                    print $"[dry-run] would link: ($newest_mgr) -> ($mgr_link)"
-                    { switched: false, prev: "", planned: $planned }
-                } else {
-                    let prev = ((^readlink $mgr_link | complete).stdout | str trim)
-                    ^$runner ln -snf $newest_mgr $mgr_link
-                    { switched: true, prev: $prev, planned: $planned }
-                }
+        let prev_mgr = if (not $dry_run) and (($mgr_link | path type) == "symlink") {
+            ((^readlink $mgr_link | complete).stdout | str trim)
+        } else { "" }
+        try {
+            print $"==> step 2 enabling newest images via ($runner)"
+            if $dry_run {
+                print $"[dry-run] would run: ($runner) sysexts-manager enable"
             } else {
-                { switched: false, prev: "", planned: $planned }
+                ^$runner sysexts-manager ...$vflag enable
             }
-        } else {
-            { switched: false, prev: "", planned: "" }
-        }
 
-        print $"==> step 3 refreshing merge via ($runner)"
-        if $dry_run {
-            print $"[dry-run] would run: ($runner) systemctl restart systemd-sysext.service"
-        } else {
-            try {
-                ^$runner systemctl restart systemd-sysext.service
-            } catch { |err|
-                mut rollback_errs = []
-                if $switch_info.switched and ($switch_info.prev | is-not-empty) {
-                    let rb_ln = (^$runner ln -snf $switch_info.prev $mgr_link | complete)
-                    if $rb_ln.exit_code != 0 {
-                        $rollback_errs = ($rollback_errs | append $"manager link rollback failed: ($rb_ln.stderr | str trim)")
+            let mgr_matches = (glob "/var/lib/extensions.d/sysexts-manager-*.raw")
+            let compat_mgr = (
+                $mgr_matches
+                | where {|p|
+                    let base = ($p | path basename)
+                    let rel_ok = ($rel_tag | is-empty) or ($base | str contains $rel_tag)
+                    let arch_ok = ($arch_tags | any {|a| $base | str ends-with $"-($a).raw" })
+                    $rel_ok and $arch_ok
+                }
+            )
+            let planned = if ($mgr_link | path type) == "symlink" and ($compat_mgr | is-not-empty) {
+                let newest_mgr = (sort-sysext-paths "sysexts-manager" $rel_tag $compat_mgr | last)
+                let cur_mgr = (try { $mgr_link | path expand } catch { "" })
+                let compat_expanded = ($compat_mgr | each {|p| $p | path expand })
+                let needs_switch = ($cur_mgr | is-empty) or ($cur_mgr not-in $compat_expanded) or (($newest_mgr | path expand) != $cur_mgr)
+                let next_planned = ($newest_mgr | path expand)
+                if $needs_switch {
+                    if $dry_run {
+                        print $"[dry-run] would link: ($newest_mgr) -> ($mgr_link)"
+                    } else {
+                        ^$runner ln -snf $newest_mgr $mgr_link
                     }
                 }
-                let saved_paths = ($pre_run_links | get link)
-                for cur in (glob "/run/extensions/*.raw") {
-                    if ($cur | path type) == "symlink" and ($cur not-in $saved_paths) {
-                        let rm_res = (^$runner rm -f $cur | complete)
-                        if $rm_res.exit_code != 0 {
-                            $rollback_errs = ($rollback_errs | append $"runtime link removal failed ($cur): ($rm_res.stderr | str trim)")
-                        }
-                    }
-                }
-                for item in $pre_run_links {
-                    let rb_run = (^$runner ln -snf $item.target $item.link | complete)
-                    if $rb_run.exit_code != 0 {
-                        $rollback_errs = ($rollback_errs | append $"runtime link rollback failed ($item.link): ($rb_run.stderr | str trim)")
-                    }
-                }
-                let rb_merge = (^$runner systemctl restart systemd-sysext.service | complete)
-                if $rb_merge.exit_code != 0 {
-                    $rollback_errs = ($rollback_errs | append $"recovery merge failed: ($rb_merge.stderr | str trim)")
-                }
-                let msg = if ($rollback_errs | is-not-empty) {
-                    $"($err.msg); ($rollback_errs | str join '; ')"
-                } else {
-                    $err.msg
-                }
-                error make { msg: $msg }
+                $next_planned
+            } else {
+                ""
             }
+
+            print $"==> step 3 refreshing merge via ($runner)"
+            if $dry_run {
+                print $"[dry-run] would run: ($runner) systemctl restart systemd-sysext.service"
+            } else {
+                ^$runner systemctl restart systemd-sysext.service
+            }
+            $planned
+        } catch { |err|
+            if $dry_run {
+                error make $err
+            }
+            mut rollback_errs = []
+            if ($prev_mgr | is-not-empty) {
+                let rb_ln = (^$runner ln -snf $prev_mgr $mgr_link | complete)
+                if $rb_ln.exit_code != 0 {
+                    $rollback_errs = ($rollback_errs | append $"manager link rollback failed: ($rb_ln.stderr | str trim)")
+                }
+            }
+            let saved_paths = if ($pre_run_links | is-not-empty) { $pre_run_links | get link } else { [] }
+            for cur in (glob "/run/extensions/*.raw") {
+                if ($cur | path type) == "symlink" and ($cur not-in $saved_paths) {
+                    let rm_res = (^$runner rm -f $cur | complete)
+                    if $rm_res.exit_code != 0 {
+                        $rollback_errs = ($rollback_errs | append $"runtime link removal failed ($cur): ($rm_res.stderr | str trim)")
+                    }
+                }
+            }
+            for item in $pre_run_links {
+                let rb_run = (^$runner ln -snf $item.target $item.link | complete)
+                if $rb_run.exit_code != 0 {
+                    $rollback_errs = ($rollback_errs | append $"runtime link rollback failed ($item.link): ($rb_run.stderr | str trim)")
+                }
+            }
+            let rb_merge = (^$runner systemctl restart systemd-sysext.service | complete)
+            if $rb_merge.exit_code != 0 {
+                $rollback_errs = ($rollback_errs | append $"recovery merge failed: ($rb_merge.stderr | str trim)")
+            }
+            let msg = if ($rollback_errs | is-not-empty) {
+                $"($err.msg); ($rollback_errs | str join '; ')"
+            } else {
+                $err.msg
+            }
+            error make { msg: $msg }
         }
-        $switch_info.planned
     } catch { |err|
         let rerrs = (do $restore_service)
         let msg = if ($rerrs | is-not-empty) {

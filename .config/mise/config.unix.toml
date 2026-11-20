@@ -1,0 +1,297 @@
+# Unix (Linux + macOS) Mise bootstrap configuration
+
+[dotfiles]
+"~/.bashrc" = { source = "../../dotfiles/.bashrc" }
+"~/.profile" = { source = "../../dotfiles/.profile" }
+"~/.config/fish/config.fish" = { source = "../../dotfiles/.config/fish/config.fish" }
+"~/.config/fish/fish_plugins" = { source = "../../dotfiles/.config/fish/fish_plugins" }
+"~/.config/fish/conf.d/brew.fish" = { source = "../../dotfiles/.config/fish/conf.d/brew.fish" }
+"~/.config/fish/conf.d/github-token.fish" = { source = "../../dotfiles/.config/fish/conf.d/github-token.fish" }
+"~/.config/fish/conf.d/rustup.fish" = { source = "../../dotfiles/.config/fish/conf.d/rustup.fish" }
+"~/.config/nushell/config.nu" = { source = "../../dotfiles/.config/nushell/config.nu" }
+"~/.config/nushell/env.nu" = { source = "../../dotfiles/.config/nushell/env.nu" }
+"~/.config/nushell/uutils-prefer.nu" = { source = "../../dotfiles/.config/nushell/uutils-prefer.nu" }
+"~/.config/television/config.toml" = { source = "../../dotfiles/.config/television/config.toml" }
+"~/.config/wax/Waxfile.toml" = { source = "../../dotfiles/.config/wax/Waxfile.toml" }
+
+[bootstrap.repos]
+"~/.local/share/argc-completions" = { url = "https://github.com/sigoden/argc-completions.git" }
+
+[bootstrap.mise_shell_activate]
+# Bash and Fish already activate mise inside their managed dotfiles
+zsh = true
+
+[bootstrap.hooks]
+post-tools = { run = "mise run nu-autoload" }
+
+[tasks.fish-plugins]
+description = "Install Fisher and sync Fish plugins from fish_plugins"
+run = """
+if ! command -v fish >/dev/null 2>&1; then
+    echo "Fish not found; skipping fisher plugin sync"
+    exit 0
+fi
+
+cfg_dir="$(fish --no-config -c 'printf "%s" "$__fish_config_dir"')" || true
+if [ -z "$cfg_dir" ]; then
+    cfg_dir="${XDG_CONFIG_HOME:-$HOME/.config}/fish"
+fi
+mkdir -p "$cfg_dir"
+
+lock_file="$cfg_dir/.fish_plugins.lock"
+exec 9>"$lock_file"
+if command -v flock >/dev/null 2>&1; then
+    if ! flock -n 9; then
+        echo "Another fish-plugins sync is already running (lock: $lock_file)" >&2
+        exit 1
+    fi
+elif command -v python3 >/dev/null 2>&1; then
+    if ! python3 -c 'import fcntl, sys
+try:
+    fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    sys.exit(1)'; then
+        echo "Another fish-plugins sync is already running (lock: $lock_file)" >&2
+        exit 1
+    fi
+else
+    echo "flock or python3 is required to serialize fish-plugins sync" >&2
+    exit 1
+fi
+
+manifest="$cfg_dir/fish_plugins"
+state_file="$cfg_dir/.fish_plugins.symlink-target"
+file_backup_state="$cfg_dir/.fish_plugins.orig-backup"
+
+was_symlink=0
+link_target=""
+manifest_source="$manifest"
+manifest_bak=""
+staged_file=""
+staged_active=0
+restored=0
+fish_pid=""
+
+_restore_manifest() {
+    [ "$restored" -eq 1 ] && return 0
+    restore_rc=0
+    if [ "$staged_active" -eq 1 ]; then
+        if [ "$was_symlink" -eq 1 ]; then
+            if ! rm -f "$manifest" || ! ln -sfn "$link_target" "$manifest"; then
+                echo "Failed to restore symlink $manifest -> $link_target; backup preserved at $manifest_bak" >&2
+                restore_rc=1
+            elif ! rm -f "$state_file"; then
+                echo "Failed to clear symlink recovery state $state_file; remove it before editing fish_plugins or retrying" >&2
+                restore_rc=1
+            fi
+        elif [ -n "$manifest_bak" ] && [ -f "$manifest_bak" ]; then
+            if [ ! -f "$manifest" ] || ! cmp -s "$manifest_bak" "$manifest"; then
+                if ! cp -f "$manifest_bak" "$manifest"; then
+                    echo "Failed to restore $manifest; backup preserved at $manifest_bak" >&2
+                    restore_rc=1
+                elif ! rm -f "$file_backup_state"; then
+                    echo "Failed to clear pending recovery backup $file_backup_state; resolve it before editing fish_plugins or retrying" >&2
+                    restore_rc=1
+                fi
+            elif ! rm -f "$file_backup_state"; then
+                echo "Failed to clear pending recovery backup $file_backup_state; resolve it before editing fish_plugins or retrying" >&2
+                restore_rc=1
+            fi
+        fi
+    fi
+    if [ "$restore_rc" -eq 0 ] && [ -n "$manifest_bak" ]; then
+        rm -f "$manifest_bak"
+    fi
+    if [ -n "$staged_file" ]; then
+        rm -f "$staged_file"
+    fi
+    restored=1
+    return "$restore_rc"
+}
+
+_on_exit() {
+    _restore_manifest || true
+}
+
+_on_signal() {
+    sig_rc="$1"
+    if [ -n "$fish_pid" ]; then
+        if command -v pkill >/dev/null 2>&1; then
+            pkill -TERM -P "$fish_pid" 2>/dev/null || true
+        fi
+        kill -TERM "$fish_pid" 2>/dev/null || true
+        wait "$fish_pid" 2>/dev/null || true
+        fish_pid=""
+    fi
+    exit "$sig_rc"
+}
+
+trap _on_exit EXIT
+trap '_on_signal 130' INT
+trap '_on_signal 143' TERM
+trap '_on_signal 129' HUP
+
+# Recover original symlink if a previous run was terminated mid-sync (e.g. SIGKILL)
+if [ -f "$state_file" ]; then
+    if [ ! -L "$manifest" ]; then
+        IFS= read -r saved_target < "$state_file" || true
+        if [ -z "$saved_target" ]; then
+            echo "Found empty fish_plugins symlink recovery state at $state_file" >&2
+            exit 1
+        fi
+        if ! rm -f "$manifest" || ! ln -sfn "$saved_target" "$manifest"; then
+            echo "Failed to recover fish_plugins symlink from $state_file" >&2
+            exit 1
+        fi
+    fi
+    rm -f "$state_file"
+fi
+
+if [ -f "$file_backup_state" ]; then
+    if [ ! -L "$manifest" ]; then
+        if ! cp -f "$file_backup_state" "$manifest"; then
+            echo "Failed to recover regular fish_plugins from $file_backup_state" >&2
+            exit 1
+        fi
+    fi
+    rm -f "$file_backup_state"
+fi
+
+if [ -L "$manifest" ]; then
+    was_symlink=1
+    link_target="$(readlink "$manifest")" || true
+    manifest_source="$(realpath "$manifest")" || true
+    if [ -z "$link_target" ] || [ -z "$manifest_source" ]; then
+        echo "Failed to resolve fish_plugins symlink: $manifest" >&2
+        exit 1
+    fi
+fi
+
+if [ -f "$manifest_source" ]; then
+    manifest_bak="$(mktemp)" || {
+        echo "Failed to create backup file for fish_plugins" >&2
+        exit 1
+    }
+    if ! cp -f "$manifest_source" "$manifest_bak"; then
+        echo "Failed to back up fish_plugins; backup file left at $manifest_bak" >&2
+        exit 1
+    fi
+    staged_file="$(mktemp)" || {
+        echo "Failed to create staged manifest for fish_plugins; backup preserved at $manifest_bak" >&2
+        exit 1
+    }
+    if ! (
+        while IFS= read -r line || [ -n "$line" ]; do
+            trimmed="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')" || exit 1
+            case "$trimmed" in
+                ""|'#'*) continue ;;
+                *) printf '%s\\n' "$trimmed" || exit 1 ;;
+            esac
+        done < "$manifest_bak" > "$staged_file"
+    ); then
+        echo "Failed to normalize fish_plugins manifest; backup preserved at $manifest_bak" >&2
+        exit 1
+    fi
+
+    if [ "$was_symlink" -eq 1 ]; then
+        state_tmp="$(mktemp "$cfg_dir/.fish_plugins.symlink-target.XXXXXX")" || {
+            echo "Failed to create symlink recovery state for fish_plugins" >&2
+            exit 1
+        }
+        if ! printf '%s\\n' "$link_target" > "$state_tmp" || ! mv -f "$state_tmp" "$state_file"; then
+            rm -f "$state_tmp" 2>/dev/null || true
+            echo "Failed to persist symlink recovery state at $state_file" >&2
+            exit 1
+        fi
+        staged_active=1
+        if ! rm -f "$manifest" || ! cp -f "$staged_file" "$manifest"; then
+            echo "Failed to stage writable temporary fish_plugins; backup preserved at $manifest_bak" >&2
+            exit 1
+        fi
+    else
+        bak_tmp="$(mktemp "$cfg_dir/.fish_plugins.orig-backup.XXXXXX")" || {
+            echo "Failed to create regular-file recovery state for fish_plugins" >&2
+            exit 1
+        }
+        if ! cp -f "$manifest_bak" "$bak_tmp" || ! mv -f "$bak_tmp" "$file_backup_state"; then
+            rm -f "$bak_tmp" 2>/dev/null || true
+            echo "Failed to persist regular-file recovery state at $file_backup_state" >&2
+            exit 1
+        fi
+        staged_active=1
+        if ! cp -f "$staged_file" "$manifest"; then
+            echo "Failed to stage normalized fish_plugins; backup preserved at $manifest_bak" >&2
+            exit 1
+        fi
+    fi
+fi
+
+fish_rc=0
+FISH_SYNC_MANIFEST="$manifest" FISH_SYNC_STAGED="$staged_file" fish -c '
+if not functions -q fisher
+    set -l fisher_tmp (mktemp)
+    if test $status -ne 0; or test -z "$fisher_tmp"
+        echo "Failed to create temp file for Fisher installer" >&2
+        exit 1
+    end
+    if not curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish -o "$fisher_tmp"
+        rm -f "$fisher_tmp"
+        echo "Failed to download Fisher installer" >&2
+        exit 1
+    end
+    source "$fisher_tmp"
+    set -l src_status $status
+    rm -f "$fisher_tmp"
+    if test $src_status -ne 0; or not fisher install jorgebucaran/fisher
+        echo "Failed to install Fisher" >&2
+        exit 1
+    end
+    if test -n "$FISH_SYNC_STAGED"; and test -f "$FISH_SYNC_STAGED"
+        if not cp -f "$FISH_SYNC_STAGED" "$FISH_SYNC_MANIFEST"
+            echo "Failed to reset staged fish_plugins before fisher update" >&2
+            exit 1
+        end
+    end
+end
+
+if not fisher update
+    echo "fisher update failed" >&2
+    exit 1
+end
+
+if test -n "$FISH_SYNC_STAGED"; and test -f "$FISH_SYNC_STAGED"
+    set -l installed_raw (fisher list)
+    set -l installed_lower (printf '%s\\n' $installed_raw | string lower)
+    while read -l p
+        test -z "$p"; and continue
+        set -l expanded (string replace -r "^~/" "$HOME/" -- "$p")
+        if test -d "$expanded"
+            set -l canon (realpath -- "$expanded" 2>/dev/null)
+            if test $status -ne 0; or test -z "$canon"
+                set canon "$expanded"
+            end
+            if not contains -- "$canon" $installed_raw
+                echo "Missing expected Fisher plugin after sync: $p" >&2
+                exit 1
+            end
+        else
+            set -l p_lower (string lower -- "$p")
+            if not contains -- "$p_lower" $installed_lower
+                echo "Missing expected Fisher plugin after sync: $p" >&2
+                exit 1
+            end
+        end
+    end < "$FISH_SYNC_STAGED"
+end
+' &
+fish_pid=$!
+wait "$fish_pid" || fish_rc=$?
+fish_pid=""
+
+if ! _restore_manifest; then
+    exit 1
+fi
+if [ "$fish_rc" -ne 0 ]; then
+    exit "$fish_rc"
+fi
+"""

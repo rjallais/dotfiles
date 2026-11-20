@@ -1,177 +1,88 @@
-# Dotfiles
+# Dotfiles (Mise Bootstrap)
 
-Cross-platform dotfiles using [Chezmoi](https://www.chezmoi.io/) and [Mise](https://mise.jdx.dev/). All bootstrap scripts are written in [Nushell](https://www.nushell.sh/) for Windows/macOS/Linux compatibility.
+Cross-platform workstation and dotfiles setup powered solely by [Mise](https://mise.jdx.dev/) (`mise bootstrap` + `mise dotfiles`) and [fnox](https://fnox.jdx.dev/) across **Bazzite / Fedora Atomic Linux**, **Windows**, and **WSL**.
 
 ## Quick Start
 
-### macOS / Linux
+### Preview / Dry Run (Recommended First)
 
 ```bash
-curl https://mise.run | sh && ~/.local/bin/mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
+# On an existing checkout at ~/dotfiles:
+MISE_CONFIG_DIR="$PWD/.config/mise" mise bootstrap --dry-run --skip-dirty
+MISE_CONFIG_DIR="$PWD/.config/mise" mise bootstrap plan
+MISE_CONFIG_DIR="$PWD/.config/mise" mise dot diff
 ```
 
-### Windows (PowerShell)
+### Fresh Machine Bootstrap
+
+#### Linux / macOS
+
+If `~/.config/mise` already contains files (for example from a prior Chezmoi or local Mise setup), back up and move it aside first because `--config-dir .config/mise` requires `~/.config/mise` to be missing, empty, or already linked to the checkout:
+
+```bash
+# Optional migration step if ~/.config/mise already exists and is not yet linked:
+# mv ~/.config/mise ~/.config/mise.bak
+
+curl https://mise.run | sh && ~/.local/bin/mise bootstrap \
+  --from https://github.com/rjallais/dotfiles.git \
+  --from-dir ~/dotfiles \
+  --config-dir .config/mise \
+  --prompt-vars \
+  --skip-dirty
+
+# Optional on Linux/Bazzite once Homebrew is installed:
+~/.local/bin/mise run brew-ublue
+
+# Optional for Fish users (installs Fisher & plugins from fish_plugins):
+~/.local/bin/mise run fish-plugins
+```
+
+> **Existing Dotfiles Note:** `mise bootstrap` stops rather than overwriting conflicting regular files (such as a starter `~/.bashrc` or `~/.profile`), while `--skip-dirty` applies only to Git repositories under `[bootstrap.repos]`. Review conflicts with `MISE_CONFIG_DIR="$HOME/dotfiles/.config/mise" mise dot diff`, back up and move conflicting files aside before re-running bootstrap (and merge back any local settings from `~/.config/mise.bak`), or pass `--force-dotfiles` intentionally after backing them up. Nushell configuration targets **Nushell 0.110.0+** (`config.nu` header `0.117.0`), and `zen-filter.service` runs only when `~/.local/bin/zen-filter-bg` exists.
+
+#### Windows (PowerShell)
 
 ```powershell
-$v = (irm https://api.github.com/repos/jdx/mise/releases/latest).tag_name; $arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x64" }; irm "https://github.com/jdx/mise/releases/download/$v/mise-$v-windows-$arch.zip" -OutFile "$env:TEMP\mise.zip"; Expand-Archive "$env:TEMP\mise.zip" -Dest "$env:LOCALAPPDATA\mise" -Force; $env:Path = "$env:LOCALAPPDATA\mise;$env:Path"; [Environment]::SetEnvironmentVariable("Path", "$env:LOCALAPPDATA\mise;$([Environment]::GetEnvironmentVariable('Path', 'User'))", 'User'); & "$env:LOCALAPPDATA\mise\mise.exe" exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
+$v = (irm https://api.github.com/repos/jdx/mise/releases/latest).tag_name
+irm "https://github.com/jdx/mise/releases/download/$v/mise-$v-windows-x64.zip" -OutFile "$env:TEMP\mise.zip"
+Expand-Archive "$env:TEMP\mise.zip" -Dest "$env:LOCALAPPDATA\mise" -Force
+$miseBin = "$env:LOCALAPPDATA\mise\mise\bin"
+$env:Path = "$miseBin;$env:Path"
+& "$miseBin\mise.exe" bootstrap `
+  --from https://github.com/rjallais/dotfiles.git `
+  --from-dir "$HOME\dotfiles" `
+  --config-dir .config/mise `
+  --prompt-vars `
+  --skip-dirty
 ```
 
-That's it! These one-liners:
-1. Download and install mise (with self-update capability)
-2. Run `chezmoi` through `mise exec` (alias: `mise x`) and auto-install it
-3. Clone this repository
-4. Prompt for your name and default git email
-5. Apply all dotfiles
-6. Run `mise install` to install all development tools
+> **Windows Note:** `mise dotfiles` uses symlinks on Unix (`dotfiles.default_mode = "symlink"`), and automatically falls back to copying on Windows unless Developer Mode is enabled (`dotfiles.windows_symlinks = true`). Windows `[dotfiles]` mappings assume standard `%USERPROFILE%\AppData\Roaming` and `%USERPROFILE%\AppData\Local` profile locations (set `XDG_CONFIG_HOME` or copy manually if `LOCALAPPDATA` was relocated). Add `$env:LOCALAPPDATA\mise\mise\bin` to your user `PATH` (or install via `irm https://mise.jdx.dev/install.ps1 | iex`). When `mise bootstrap --update --skip-dirty` stops on a changed copied dotfile, review differences with `mise dot diff`, force-apply only the reviewed target(s) (e.g. `mise dot apply --force "~/AppData/Local/television/config/config.toml"`), and then re-run `mise bootstrap --update --skip-dirty` to resume any remaining steps.
 
-## What Gets Installed
+## Layout
 
-### Dotfiles
-- Shell configs: `.bashrc`, `.profile`, `.bash_profile`
-- Git config with delta diff viewer
-- Nushell configuration (`~/.config/nushell` on Linux/macOS, `%APPDATA%/nushell` on Windows)
-- Fish shell configuration
-- Starship prompt
+| Path | Purpose |
+|---|---|
+| `.config/mise/miserc.toml` | Enables `auto_env = true` so OS overlays (`unix`, `linux`, `windows`) load automatically |
+| `.config/mise/config.toml` | Shared `[vars]`, `[tools]`, `[settings]`, cross-platform `[dotfiles]`, and `nu-autoload` task |
+| `.config/mise/config.unix.toml` | Unix shell configs, `[bootstrap.repos]` (`argc-completions`), Zsh activation, `post-tools` hook |
+| `.config/mise/config.linux.toml` | Linux desktop configs, `/etc/sysexts-manager` files (`[bootstrap.files]`), Homebrew formulae/casks, Flatpaks |
+| `.config/mise/config.windows.toml` | Windows `AppData/Roaming/nushell` dotfiles and `winget` packages |
+| `.config/mise/scripts/nu-autoload.nu` | Generates `$nu.data-dir/vendor/autoload/*.nu` integrations |
+| `dotfiles/` | Managed dotfile sources (plain paths + `.gitconfig.tera`) |
+| `system/` | System-level configuration files managed via `[bootstrap.files]` |
+| `Brewfile` | Reference Homebrew bundle (mirrors `[bootstrap.packages]` in `config.linux.toml`) |
 
-### Development Tools (via Mise)
+## Secrets (`fnox` + `age`)
 
-See `dot_config/mise/config.toml` for the full list. Highlights:
-
-| Category | Tools |
-|----------|-------|
-| **Shell** | Nushell, Starship, Atuin, Zoxide, Carapace |
-| **Languages** | Go, Node.js, Bun, Python (via uv) |
-| **CLI Tools** | ripgrep, fd, bat, lsd, fzf, delta, dust, bottom |
-| **Dev Tools** | GitHub CLI, chezmoi, cmake, sqlite |
+Encrypted secrets live in `dotfiles/.config/fnox/config.toml` (ciphertext only). Your private key (`~/.config/fnox/age.txt`) stays outside the repository; shell startup files load encrypted variables only when `fnox` and an `age` identity are present.
 
 ## Daily Usage
 
-### Updating Dotfiles
-
 ```bash
-chezmoi update        # Pull latest and apply
-chezmoi diff          # See what would change
-chezmoi apply         # Apply changes
+mise bootstrap --update --skip-dirty   # Pull latest repo updates & apply everything
+mise bootstrap status                  # Check status of packages, files, repos, tools
+mise dot diff                          # Preview dotfile symlink/template diffs
+mise dot apply                         # Deploy dotfiles
+mise install                           # Sync Mise tools
+mise run brew-ublue                    # Install ublue-os/tap casks (custom cask DSL)
+mise run fish-plugins                  # Sync Fish plugins via Fisher
 ```
-
-### Managing Tools
-
-```bash
-mise ls               # List installed tools
-mise install          # Install/update tools from config
-mise outdated         # Check for updates
-mise use node@22      # Switch to specific version
-mise self-update      # Update mise itself
-```
-
-### Editing Dotfiles
-
-```bash
-chezmoi edit ~/.bashrc   # Edit source, then apply
-chezmoi cd               # Go to source directory
-```
-
-## How It Works
-
-### Bootstrap Flow
-
-```
-One-liner installs mise, then runs chezmoi via mise:
-
-mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply
-    │
-    ├── 1. run_before_00-ensure-dirs.nu (creates required Linux/Windows config directories)
-    ├── 2. Dotfiles applied (configs, shell rc files)
-    ├── 3. run_onchange_after_50-mise-install.nu.tmpl (mise install)
-    └── 4. run_onchange_after_60-nu-autoload.nu.tmpl (generate Nu autoload scripts)
-```
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `.chezmoi.toml.tmpl` | Prompts for name/default git email, configures nu interpreter |
-| `.chezmoiignore.tmpl` | Ignores OS-specific files (Linux vs Windows targets) |
-| `.chezmoiscripts/run_before_*.nu` | Pre-apply setup (directories) |
-| `.chezmoiscripts/run_onchange_*.nu.tmpl` | Post-apply actions (mise install, Nu autoload generation) |
-| `dot_config/mise/config.toml` | Tool versions managed by mise |
-
-### Why Nushell Scripts?
-
-All chezmoi scripts use Nushell (`.nu`) instead of Bash/PowerShell because:
-- **Cross-platform**: Same syntax on Windows, macOS, and Linux
-- **Modern**: Structured data, better error handling
-- **No system dependency**: Nushell is provided by mise via `mise exec nu --`
-
-The interpreter configuration in `.chezmoi.toml.tmpl`:
-```toml
-[interpreters.nu]
-    command = "mise"
-    args = ["exec", "aqua:nushell/nushell", "--"]
-```
-
-This means chezmoi runs `.nu` scripts through mise, which provides Nushell on-demand.
-
-### Git Requirement On Fresh Systems
-
-Bootstrap does not require preinstalled Git. `--use-builtin-git=on` forces chezmoi's builtin git for `init`.
-
-Install external Git if you need:
-- SSH-based git remotes
-- `git-repo` externals
-- direct git workflows outside chezmoi
-
-Optional bootstrap with external Git via conda-forge (through mise):
-```bash
-mise exec conda:git@latest chezmoi@latest -- chezmoi --use-builtin-git=auto init --apply rjallais
-```
-
-## Alternative Installation
-
-If you prefer to install mise via a package manager:
-
-### macOS
-```bash
-brew install mise
-```
-
-### Windows
-```powershell
-scoop install mise    # or: winget install jdx.mise
-```
-
-### Linux (various)
-```bash
-# Fedora/RHEL
-dnf copr enable jdxcode/mise && dnf install mise
-
-# Arch
-pacman -S mise
-
-# Alpine
-apk add mise
-```
-
-Then run chezmoi separately:
-```bash
-mise exec chezmoi@latest -- chezmoi --use-builtin-git=on init --apply rjallais
-```
-
-## Supported Systems
-
-| Platform | Status |
-|----------|--------|
-| Linux (x64) | ✅ Tested |
-| Linux (ARM64) | ⚠️ Expected to work, not tested |
-| Windows 10/11 (x64) | ✅ Tested |
-| Windows 11 (ARM64) | ⚠️ Expected to work, not tested |
-| macOS (Intel) | ⚠️ Expected to work, not tested |
-| macOS (Apple Silicon/ARM64) | ⚠️ Expected to work, not tested |
-
-## Customization
-
-- Edit `.chezmoi.toml.tmpl` to change prompted variables
-- Edit `dot_gitconfig.github`, `dot_gitconfig.gitlab`, and `dot_gitconfig.codefloe` to change host-specific git identities
-- Edit `dot_config/mise/config.toml` to change which tools are installed
-- Edit `dot_config/nushell/config.nu` for Linux/macOS Nushell configuration
-- Edit `AppData/Roaming/nushell/config.nu` for Windows Nushell configuration

@@ -1,0 +1,15 @@
+brew = [
+"nushell",
+"dash-shell",
+"starship",
+"zoxide",
+"atuin",
+"ca-certificates",
+"openssl@3",
+]
+
+cask = [
+"font-jetbrains-mono-nerd-font",
+"font-fira-code-nerd-font",
+"font-caskaydia-mono-nerd-font",
+]

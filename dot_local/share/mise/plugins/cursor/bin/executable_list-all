@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-curl -s "https://cursor.com/api/download?platform=linux-x64&releaseTrack=stable" | jq -r .version

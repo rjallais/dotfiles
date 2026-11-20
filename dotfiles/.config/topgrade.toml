@@ -1,0 +1,18 @@
+[misc]
+assume_yes = true
+disable = ["jetbrains_toolbox", "toolbx", "chezmoi", "antigravity", "cursor", "waydroid", "aqua"]
+
+[containers]
+runtime = "podman"
+
+[commands]
+
+[post_commands]
+"Clean npm cache" = "npm cache clean --force"
+"Clean pnpm store" = "pnpm store prune"
+"Clean bun cache" = "rm -rf ~/.bun/install/cache"
+"Clean uv cache" = "uv cache clean"
+"Clean mise cache" = "mise cache clear"
+"Prune podman" = "podman system prune -f"
+"Clean JetBrains cache" = "rm -rf ~/.cache/JetBrains"
+"Trim journal logs" = "sudo -n journalctl --vacuum-size=100M || true"

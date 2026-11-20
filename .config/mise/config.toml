@@ -1,0 +1,163 @@
+# Shared global Mise configuration, tools, settings, and cross-platform dotfiles
+
+[vars.name]
+default = "René Jallais"
+prompt = "Full name"
+
+[vars.git_email_default]
+default = "commits@jallais.dev"
+prompt = "Default git email"
+
+[tools]
+aqua = "latest"
+"aqua:exercism/cli" = "latest"
+"aqua:iawia002/lux" = "latest"
+"aqua:nats-io/natscli" = "latest"
+"aqua:twistedpair/google-cloud-sdk" = "latest"
+argc = "latest"
+atuin = "latest"
+aube = "latest"
+azure-cli = "latest"
+bitwarden = "latest"
+bottom = "latest"
+bun = "latest"
+cargo-binstall = "latest"
+claude-code = "latest"
+cmake = "4.5.0"
+codex = "latest"
+conan = "latest"
+"conda:ruby" = "latest"
+copilot = "latest"
+cosign = "latest"
+crush = "latest"
+delta = "latest"
+difftastic = "latest"
+doctl = "latest"
+dust = "latest"
+edit = "latest"
+entire = "latest"
+eza = "latest"
+fd = "latest"
+fnox = "latest"
+github-cli = "latest"
+glab = "latest"
+
+"github:AdguardTeam/AdGuardHome" = "latest"
+"github:Valkyrie00/bold-brew" = "latest"
+"github:aaif-goose/goose" = "latest"
+"github:abishekvashok/cmatrix" = "latest"
+"github:danielmiessler/fabric" = "latest"
+"github:lucasgelfond/zerobrew" = "latest"
+"github:neul-labs/stout" = "latest"
+"github:pkgforge/soar" = "latest"
+"github:plyght/wax" = { version = "latest", os = ["linux", "macos"] }
+"github:rjallais/ubrew" = "latest"
+"github:webull-inc/webull-openapi-cli" = "1.0.8"
+"github:xmake-io/xmake" = "latest"
+
+go = "latest"
+"go:github.com/go-delve/delve/cmd/dlv" = { version = "latest", os = ["linux", "macos"] }
+"go:github.com/tuna-os/bluefin-cli" = "latest"
+"go:golang.org/x/tools/gopls" = "latest"
+gup = "latest"
+hyperfine = "latest"
+java = "latest"
+julia = "latest"
+lsd = "latest"
+micro = "latest"
+node = "latest"
+odin = "latest"
+pnpm = "latest"
+qwen-code = "latest"
+rclone = "latest"
+ripgrep = "latest"
+ruff = "0.17.5"
+rust = "latest"
+sd = "latest"
+sqlite = "3.54.1"
+television = "latest"
+topgrade = "latest"
+usage = "latest"
+uv = "latest"
+yt-dlp = "latest"
+zig = "0.17.1"
+
+amp = { version = "latest", allow_builds = ["@ampcode/cli"] }
+"npm:9router" = "latest"
+"npm:@google/gemini-cli" = "latest"
+"npm:@google/stitch" = "latest"
+"npm:@jetbrains/junie" = "latest"
+"npm:@kilocode/cli" = "latest"
+"npm:@microsoft/inshellisense" = "latest"
+"npm:@opencode/cli" = { version = "latest", allow_builds = ["@opencode/cli"] }
+"npm:freebuff" = { version = "latest", trust_policy_excludes = ["freebuff@0.2.36"] }
+
+"pipx:graphifyy" = "latest"
+"pipx:numpy" = "latest"
+"pipx:tldr" = "latest"
+"pipx:trash-cli" = "latest"
+"pypi:max" = "latest"
+"pypi:mojo" = "latest"
+"pypi:mojo-compiler" = "latest"
+
+"cargo:bacon" = { version = "latest", os = ["linux"] }
+"cargo:dysk" = { version = "latest", os = ["linux"] }
+"cargo:kombrucha" = "0.2.3"
+
+"aqua:jetify-com/devbox" = "latest"
+"aqua:syncthing/syncthing" = { version = "latest", os = ["linux"] }
+"aqua:BurntSushi/ripgrep" = { version = "latest", os = ["windows"] }
+"aqua:carapace-sh/carapace-bin" = { version = "latest", os = ["windows"] }
+"aqua:nushell/nushell" = { version = "latest", os = ["windows", "macos"] }
+"aqua:sharkdp/bat" = { version = "latest", os = ["windows"] }
+"aqua:sharkdp/fd" = { version = "latest", os = ["windows"] }
+"aqua:starship/starship" = { version = "latest", os = ["windows"] }
+"github:ajeetdsouza/zoxide" = { version = "latest", os = ["windows"] }
+
+[settings]
+experimental = true
+aqua.github_attestations = false
+idiomatic_version_file_enable_tools = []
+minimum_release_age = "0s"
+dotfiles.default_mode = "symlink"
+
+[settings.npm]
+package_manager = "aube"
+
+[settings.cargo]
+binstall = true
+
+[settings.python]
+compile = false
+
+[settings.ruby]
+compile = false
+
+[settings.github]
+credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
+
+[dotfiles]
+"~/.gitconfig" = { source = "../../dotfiles/.gitconfig.tera", mode = "template", permissions = "0644" }
+"~/.gitconfig.github" = { source = "../../dotfiles/.gitconfig.github" }
+"~/.gitconfig.gitlab" = { source = "../../dotfiles/.gitconfig.gitlab" }
+"~/.gitconfig.codefloe" = { source = "../../dotfiles/.gitconfig.codefloe" }
+"~/.config/git/ignore" = { source = "../../dotfiles/.config/git/ignore" }
+"~/.config/starship.toml" = { source = "../../dotfiles/.config/starship.toml" }
+"~/.config/topgrade.toml" = { source = "../../dotfiles/.config/topgrade.toml" }
+"~/.config/fnox/config.toml" = { source = "../../dotfiles/.config/fnox/config.toml" }
+"~/.config/micro/settings.json" = { source = "../../dotfiles/.config/micro/settings.json" }
+"~/.config/micro/bindings.json" = { source = "../../dotfiles/.config/micro/bindings.json" }
+"~/.config/delta/settings.json" = { source = "../../dotfiles/.config/delta/settings.json" }
+
+[tasks.nu-autoload]
+description = "Generate Nushell vendor/autoload integration scripts"
+run = """
+script="{{ get_env(name='MISE_CONFIG_DIR', default=config_root ~ '/.config/mise') }}/scripts/nu-autoload.nu"
+if command -v nu >/dev/null 2>&1; then
+    nu "$script"
+elif [ -x /home/linuxbrew/.linuxbrew/bin/nu ]; then
+    /home/linuxbrew/.linuxbrew/bin/nu "$script"
+else
+    mise exec aqua:nushell/nushell -- nu "$script"
+fi
+"""

@@ -1,0 +1,7 @@
+bundles:
+    base_url: https://raw.githubusercontent.com/projectbluefin/common/main/system_files
+    default_path: shared/usr/share/ublue-os/homebrew
+theme: catppuccin
+ui:
+    dark_mode: true
+    flavor: auto
